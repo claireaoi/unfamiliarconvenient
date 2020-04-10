@@ -1,4 +1,4 @@
-# <img src="./img/img001.jpeg" width="280"> 
+# <img src="./img/img001.jpeg"> 
 
 
 
