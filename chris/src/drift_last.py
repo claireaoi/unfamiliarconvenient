@@ -260,7 +260,7 @@ def makeSense(blabla):
 
 #To Clean output of ML Drift.
 def cleanText(blabla):
-    sentences= sentences= rawChris.splitlines()
+    sentences= rawChris.splitlines()
     blabli=""
     fuckedUp=0
     ok=0
