@@ -31,6 +31,7 @@ import random
 import json
 import string
 import time
+import operator
 
 #import plotly.graph_objects as go #plotly
 import networkx as nx #networkx need install the library: pip install networkx
@@ -77,7 +78,7 @@ def createGraph():
     print('Self Density:', nx.density(G))
     print('Is Self Connected :', nx.is_connected(G))
     components = nx.connected_components(G)
-    print('Number of Connected component of Self :', len(components))
+    print('Number of Connected component of Self :',components)
     largest_component = max(components, key=len)
     subSelf = G.subgraph(largest_component) # Create a "subgraph" of just the largest component
     diameter = nx.diameter(subSelf)
@@ -87,10 +88,10 @@ def createGraph():
     #Centrality node: Find which nodes are the most important ones in your network.
     degree_dict = dict(G.degree(G.nodes())) #degree is connectivity of each node: how many egde
     nx.set_node_attributes(G, degree_dict, 'degree') #First add degree each nodes as extra attribute
-    sorted_degree = sorted(degree_dict.items(), key=itemgetter(1), reverse=True) #sort this degree list
+    sorted_degree = sorted(degree_dict.items(), key=operator.itemgetter(1), reverse=True) #sort this degree list
     hubs=""
     for d in sorted_degree[:3]:
-        hubs.append("  " + d)
+        hubs+= "  " + str(d)
     print("Three bigger Hubs in Self: " +  hubs)
     #Other centralities than just hubs:
     #EIgenvector Centrality is a kind of extension of degree—it looks at a combination of a node’s edges and the edges of that node’s neighbors. Eigenvector centrality cares if you are a hub, but it also cares how many hubs you are connected to. Like second order connectivity
@@ -99,7 +100,7 @@ def createGraph():
     eigenvector_dict = nx.eigenvector_centrality(G)
     nx.set_node_attributes(G, betweenness_dict, 'betweenness')     # Assign each to an attribute in your network
     nx.set_node_attributes(G, eigenvector_dict, 'eigenvector')
-    sorted_betweenness = sorted(betweenness_dict.items(), key=itemgetter(1), reverse=True)
+    sorted_betweenness = sorted(betweenness_dict.items(), key=operator.itemgetter(1), reverse=True)
     print("Top 3 Central Concepts in Self:")
     for b in sorted_betweenness[:3]:
         print(b)

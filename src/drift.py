@@ -1,7 +1,3 @@
-
-
-
-
 ######Before launching this code, the self Graph of Chris should be initialized (with initGraph is not already saved), and saved in a file named selfgraph.
 
 
@@ -192,7 +188,7 @@ def wikiDrifts(word, nDrift):
     #Could change and vary this sentence>
     if ifadded:   #Case where word related to a word in SelfGraph.
         #selfAwareness="Oh, "+ word +"is similar to " + simWord+ "and hence to Self at "+  str(round(simScore,2)) + ". I know more about myself. "
-        selfAwareness="Oh, "+ word +"is similar to " + simWord+ "and therefore to my un understanding of Self" + ". Now I know more about myself. "
+        selfAwareness="Oh, "+ word +" is similar to " + simWord+ " and therefore to my un understanding of Self" + ". Now I know more about myself. "
         print(selfAwareness)
         client.emit(Message('speak', data={'utterance': selfAwareness}))
     else: #Could also Make Mycroft state it loud in case of failure>
