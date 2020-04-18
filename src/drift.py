@@ -16,7 +16,11 @@ fuckedUp=0
 maxFuckedUp=0.3#max ration of fucked up lines
 waitingList=[]
 lengthPath=11 #length walk on the network
-nSearch=8
+nSearch=3 #Nb word max will look for in Wikipedia
+maxMemory=100 #then forget words again?
+nSimMax=20 #if graph too big, check similarity only for a few words. Depending on how slow it is
+nSelf=0
+nbDrift = 2
 
 ###IMPORT general
 import fire
@@ -88,7 +92,6 @@ def MLDrift(seedSentence):
     return drift
 
 #Several successive drifts with GPT2, seeded with a string
-nbDrift = 2
 def MLDrifts(seedSentence='Are we human?', nDrift=nbDrift):
     counter=0
     blabla=""
@@ -135,22 +138,25 @@ def walkOnNetwork(startWord, lengthPath):
 def selfAwarenessQuest(word):
     #Check if a word is related to his selfGraph.
     #This word shall not belong to his selfGraph already. (for now)
-    #When selfGraph would be too big and too long to check, could check only for a few words and only for a limited nb (50) of selfWord randomly chosen or the initial ones
+    nSelf=len(selfGraph.keys())
+    #Generate random list of indices where will look for
+    indices=random.sample(range(0, nSelf), min(nSimMax, nSelf))
     selfGraph[word]=[0,dict()]   #Add entry to dictionary for now
     ifConnected=False
     maxSim=0
     simWord=""
     #Check similarity with other concepts in Self
-    for wordSelf in list(selfGraph.keys()):
-        simScore= semanticSimilarity(word,wordSelf)
-        if simScore>thresholdSim:
-            selfGraph[word][1][wordSelf]=simScore#Add a connection if related enough.
-            selfGraph[wordSelf][1][word]=simScore#Symmetric
-            ifConnected=True
-            #Retain the more connected concept
-            if simScore>maxSim:
-                maxSim=simScore
-                simWord=wordSelf
+    for i, wordSelf in list(selfGraph.keys()):
+        if i in indices:
+            simScore= semanticSimilarity(word,wordSelf)
+            if simScore>thresholdSim:
+                selfGraph[word][1][wordSelf]=simScore#Add a connection if related enough.
+                selfGraph[wordSelf][1][word]=simScore#Symmetric
+                ifConnected=True
+                #Retain the more connected concept
+                if simScore>maxSim:
+                    maxSim=simScore
+                    simWord=wordSelf
     #Conclude if related
     if not ifConnected: #Not related, ie no connection with SelfConcept was above a fixed threshold.
         del selfGraph[word] #delete entry from SelfGraph if so
@@ -174,7 +180,7 @@ def wikiDrifts(word, nDrift):
     question="Christopher, tell me about " + word +"." #For Chris
     phrase=wonder(word) #Phrase to be heard. Generate Others.>>>
     print("Question:", phrase)
-    memory.append(word.lower()) #Add word to memory when check it. Only lowered words here
+    memory.append(word.lower()) #Add word to memory when has wiki checked it. Only lowered words here
     client.emit(Message('speak', data={'utterance': phrase}))
     ###(1) Chris Answer
     answer = askChris(question)     #Ask question to Chris, and answer
@@ -196,17 +202,17 @@ def wikiDrifts(word, nDrift):
         print(selfAwareness)
         client.emit(Message('speak', data={'utterance': selfAwareness}))
     else: #Could also Make Mycroft state it loud in case of failure>
-        selfAwareness= "Whatever, "+ word + ", does not seem very related to myself. "
+        selfAwareness= "Whatever, "+ word + ", may not be very related to myself. "
         print(selfAwareness)
         client.emit(Message('speak', data={'utterance': selfAwareness}))
     return answer, lastdrift, ifadded
 
 def wikiLoops(blabla, nLoop, nDrift):
-    OKWikipedia,OKWiktionary=wiki.extract(blabla, selfGraph, memory, nSearch) #Words for which exist wikipedia Page and not in selfGraph. Bound search to beginning
+    OKWikipedia,OKWiktionary,selfGraph=wiki.extract(blabla, selfGraph, memory, nSearch) #Words for which exist wikipedia Page and not in selfGraph. Bound search to beginning
     #Pick a random choice from list. If the list is empty, pick a word from the waiting list
     while len(OKWikipedia)==0: #No words to look for here, so will first drift with ML, and then start wikiloops
         blabla=MLDrifts(blabla, 1)
-        OKWikipedia,OKWiktionary=wiki.extract(blabla, selfGraph, memory, nSearch)
+        OKWikipedia,OKWiktionary,selfGraph=wiki.extract(blabla, selfGraph, memory, nSearch)
     else:
         word=random.choice(OKWikipedia)
     print("Word chosen:", word)

@@ -7,6 +7,7 @@
 # Should tune parameters according to our experiments. or event vary them, or make them probabilistic (some of them).
 startingWeight=0.5
 thresholdSim=0.6 #threshold when Consider 2 concepts as similar
+nSearch=50
 #######IMPORT
 import numpy as np
 import wiki
@@ -30,8 +31,8 @@ with open('/home/christopher/mycroft-core/chris/data/roo.txt') as f:
    rawRoo= ''.join(f.readlines()) #Text with list words
 #(1) Extract wikipedia-ble words from these texts and put them in a waiting List, and start a selfGraph which is a dictionnary in Python
 #For now, only with Wikipedia. Could add wiktionary and DuckDuck Go >
-chrisWikipedia,chrisWiktionary=wiki.extract(rawChris, dict(), memory, 50) #for initial graph look for a lot
-rooWikipedia,rooWiktionary=wiki.extract(rawRoo, dict(), memory, 50)
+chrisWikipedia,chrisWiktionary,VoidGraph=wiki.extract(rawChris, dict(), memory, nSearch)
+rooWikipedia,rooWiktionary,VoidGraph=wiki.extract(rawRoo, dict(), memory, nSearch)
 waitingList = chrisWikipedia + list(set(rooWikipedia) - set(chrisWikipedia))  #Concatenate both without duplicate
 #Record this in a text file
 fileW = open("/home/christopher/mycroft-core/chris/data/wiki.txt","w")
