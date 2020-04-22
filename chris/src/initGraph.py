@@ -37,8 +37,8 @@ waitingList = chrisWikipedia + list(set(rooWikipedia) - set(chrisWikipedia))  #C
 #Record this in a text file
 fileW = open("/home/christopher/mycroft-core/chris/data/wiki.txt","w")
 print('writing wiki files')
-fileW.writelines(waitingList)
-fileW.writelines("%s\n" % elt for elt in waitingList) #Ok different lines ?
+#fileW.writelines(waitingList)
+#fileW.writelines("%s\n" % elt for elt in waitingList) #Ok different lines ?
 fileW.writelines(elt + "\n" for elt in waitingList) #Ok different lines ? and this ?
 fileW.close()
 

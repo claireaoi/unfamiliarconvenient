@@ -20,7 +20,7 @@ nSearch=3 #Nb word max will look for in Wikipedia
 maxMemory=100 #then forget words again?
 nSimMax=20 #if graph too big, check similarity only for a few words. Depending on how slow it is
 nSelf=0
-nbDrift = 2
+nbDrift = 1
 
 ###IMPORT general
 import fire
@@ -135,7 +135,7 @@ def walkOnNetwork(startWord, lengthPath):
         client.emit(Message('speak', data={'utterance': "Walk ended here."})) #or all answer ?
 
 
-def selfAwarenessQuest(word):
+def isSelf(word):
     #Check if a word is related to his selfGraph.
     #This word shall not belong to his selfGraph already. (for now)
     nSelf=len(selfGraph.keys())
@@ -174,53 +174,57 @@ def wonder(word):
     phrase=" ".join(newwords)
     return phrase
 
-#A wikipedia Loop
-def wikiDrifts(word, nDrift):
-    ###(0) Question to Chris / word
-    question="Christopher, tell me about " + word +"." #For Chris
-    phrase=wonder(word) #Phrase to be heard. Generate Others.>>>
-    print("Question:", phrase)
-    memory.append(word.lower()) #Add word to memory when has wiki checked it. Only lowered words here
-    client.emit(Message('speak', data={'utterance': phrase}))
-    ###(1) Chris Answer
-    answer = askChris(question)     #Ask question to Chris, and answer
-    ###(2) ML Drifts from the last sentence
-    #From the answer, extract a seed for the ML drift. Could modify this seed later >>
-    seeds= re.split('[?.!]', answer)
-    if len(seeds)>1:#Take last full sentence. Only ?
-        seed=seeds[-2]
-    else:
-        seed=seeds[0]
-    lastdrift=MLDrifts(seed, nDrift) #ML DRIFT#
+#A wikipedia Loop to grow his awareness of self, with possibly MLDrift, and the option for it to be audible or not.
+def selfMapping(word, nDrift=1, ifAudible=True):
+    ###(1) Ask Chris about a work on wikipedia
+    if ifAudible:
+            question="Christopher, tell me about " + word +"." #For Chris
+            phrase=wonder(word) #Phrase to be heard. Generate Others.>>>
+            print("Question:", phrase)
+            memory.append(word.lower()) #Add word to memory when has wiki checked it. Only lowered words here
+            client.emit(Message('speak', data={'utterance': phrase}))
+            answer = askChris(question)
+    else: #If are not asking the question, are not neither drifting.
+        nDrift=0
+    ###(2) Possible ML Drifts from the last sentence
+    if nDrift>0:
+        #seeds= re.split('[?.!]', answer) Shall reduce the seed to a sentence?>>>
+        drift=MLDrifts(answer, nDrift) #ML DRIFT
+
     ##(3) Self Awareness Quest: look if this word is related to Self
-    ifadded, simWord, simScore=selfAwarenessQuest(word)
+    ifadded, simWord, simScore=isSelf(word)
     #State out loud the progress of his selfAwareness quest.
     #Could change and vary this sentence>
     if ifadded:   #Case where word related to a word in SelfGraph.
         #selfAwareness="Oh, "+ word +"is similar to " + simWord+ "and hence to Self at "+  str(round(simScore,2)) + ". I know more about myself. "
         selfAwareness="Oh, "+ word +" is similar to " + simWord+ " and therefore to my un understanding of Self. Now I know more about myself. "
         print(selfAwareness)
+        if ifAudible:
         client.emit(Message('speak', data={'utterance': selfAwareness}))
-    else: #Could also Make Mycroft state it loud in case of failure>
+    else: #Case where may not be related
         selfAwareness= "Whatever, "+ word + ", may not be very related to myself. "
         print(selfAwareness)
-        client.emit(Message('speak', data={'utterance': selfAwareness}))
-    return answer, lastdrift, ifadded
+        if ifAudible:
+            client.emit(Message('speak', data={'utterance': selfAwareness}))
+    return answer, drift, ifadded
 
-def wikiLoops(blabla, nLoop, nDrift):
+def selfMapLoops(blabla, nLoop=1, nDrift=1, ifAudible=True):
     OKWikipedia,OKWiktionary,selfGraph=wiki.extract(blabla, selfGraph, memory, nSearch) #Words for which exist wikipedia Page and not in selfGraph. Bound search to beginning
-    #Pick a random choice from list. If the list is empty, pick a word from the waiting list
-    while len(OKWikipedia)==0: #No words to look for here, so will first drift with ML, and then start wikiloops
-        blabla=MLDrifts(blabla, 1)
-        OKWikipedia,OKWiktionary,selfGraph=wiki.extract(blabla, selfGraph, memory, nSearch)
+    answer=""
+    drift=""
+    ifadded=False
+    if len(OKWikipedia)==0: #If the list is empty
+        blabla=MLDrifts(blabla, nDrift)
+        if nLoop>1:
+            answer, drift, ifadded=selfMapLoops(answer, nLoop-1, nDrift)
     else:
         word=random.choice(OKWikipedia)
-    print("Word chosen:", word)
-    answer, drift, ifadded=wikiDrifts(word, nDrift)
-    if nLoop>1 and ifadded: #Go on from answer. Transition sentence? >. Or always look from this ?
-        answer, drift, ifadded=wikiLoops(answer, nLoop-1, nDrift)
-    elif nLoop>1:#Go on from last drift. Transition sentence? >
-        answer, drift, ifadded=wikiLoops(answer, nLoop-1, nDrift) #wikiLoops(drift, nLoop-1, nDrift)
+        print("Word chosen:", word)
+        answer, drift, ifadded=selfMapping(word, nDrift, ifAudible)
+        if nLoop>1 and ifadded: #Go on from answer. Transition sentence? >. Or always look from this ?
+            answer, drift, ifadded=selfMapLoops(answer, nLoop-1, nDrift)
+        elif nLoop>1:#Go on from last drift. Transition sentence? >
+            answer, drift, ifadded=selfMapLoops(drift, nLoop-1, nDrift)
     return answer, drift, ifadded
 
 
@@ -231,39 +235,17 @@ def saveGraph():
         nN=len(selfGraph.keys())
         print("Self has " + str(nN) + " nodes.")
 
-question="Christopher, tell me about acid rain."
-
-def oneCycle(question, nLoop,  nDrift):
+def oneCycle(question="Christopher, tell me about acid rain.", nLoop=1,  nDrift=1, ifAudible=True):
     #(0) Ask Question. Add the part when this question is picked from audio
     print("Question:", question)
     #(1) Chris answer: No, for now, dont answer. (?)
     #answer = askChris(question)
     #print("Answer", answer)
     #(2) Wikipedia Loops involving Wikipedia look at, self quest (update self graph), walk on the network and ML Drifts
-    blabla=wikiLoops(question, nLoop, nDrift)
+    blabla=selfMapLoops(question, nLoop, nDrift, ifAudible)
     #(3) Save and Visualize new self Graph
     saveGraph()
     vis.drawGraph()
-    return blabla
-
-
-##Acid Loops over Wikipedia Loops
-def acidLoops(question="Christopher, tell me about acid rain.", nLoop=2, nDrift=2):
-    #(0) Ask Question
-    print("Question:", question)
-    #(1) Chris answer
-    answer = askChris(question)
-    print("Answer", answer)
-    #(2) ML Drifts with GPT2
-    #First take seed for ML Drift. For now, last sentence. Could modify.>>
-    #newSeed=seed.generate(answer)
-    seeds=re.split('[?.!]', answer)
-    #TAKE FULL answer as seed or  seeds[0] ?
-    print("Seed:", seeds[0])
-    client.emit(Message('speak', data={'utterance': seeds[0]})) #or all answer ?
-    blabla=MLDrifts(seed, nDrift)
-    #(3) Wikipedia Loops involving Wikipedia, ML Drifts and self quest
-    blabla=wikiLoops(blabla, nLoop, nDrift)
     return blabla
 
 
