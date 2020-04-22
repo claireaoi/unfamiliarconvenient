@@ -1,3 +1,3 @@
 # unfamiliarconvenient
 
-[Test Image 6](img/img001.jpeg)
+[Test Image 6](/img/img001.jpeg)
