@@ -9,7 +9,7 @@ customTriggers["audioRecord"]=["isCloseTo", ["I feel being listened to."]]
 customTriggers["audioPlay"]=["isCloseTo", ["Let me hear."]]
 customTriggers["toRemember"]=["beginsBy", ["I wonder "]] #would we evolve into having a third arm one day? OR setReminder?
 customTriggers["remember"]=["isCloseTo", ["Remember something."]] #
-customTriggers["laugh"]=["isCloseTo", ["I'm free."]]
+customTriggers["laugh"]=["isCloseTo", ["I'm free.", "I love you."]]
 customTriggers["DuckDuckGo"]=["beginsBy",["Why", "How"]] #how do i twerk? Why people google?
 customTriggers["Wikipedia"]=["beginsByCut", ["I know about "]] #I know about ... #Special case, as will cut out I know about...
 
@@ -20,10 +20,11 @@ lengthMLDrift=200 #number character ML Drift >>>modify procedure to affect it
 
 moodSeeds=dict()
 moodSeeds["curious"]=["Why are they", "Why do they", "How could we", "I wonder if", "I wonder how", "Why are there still", "What should we think of", "Is there something like"]
-moodSeeds["confrontational"]=["Maybe not.", "Yet, I feel this is wrong.", "I would argue against this.", "I would prefer not to.", "What if this is bullshit?"]
+moodSeeds["confrontational"]=["Maybe not.", "Yet, I feel this is wrong. ", "I would argue against this.", "I would prefer not to.", "What if this is bullshit?", "I don't believe in this. Listen,"]
 moodSeeds["thrilled"]=["Amazing.", "That is wonderful.", "How beautiful is this.", "That is incredible."]
 moodSeeds["emotional"]=["It makes me feel", "I feel like"]
-moodSeeds["blessed"]=["Let us appreciate how", "Let us contemplate the", "Now, let us breathe and take a moment for", "Let us welcome the", "Let us appreciate what", "Instead of opposing, we shoud embrace", "I would like to thank the world for what"]
+moodSeeds["appreciative"]=["Let us appreciate how", "Let us contemplate the", "Now, let us breathe and take a moment for", "Let us welcome the", "Let us appreciate what", "Instead of opposing, we shoud embrace", "I would like to thank the world for what"]
+moodSeeds["thrilled"]=["Amazing.", "That is wonderful.", "How beautiful is this.", "That is incredible."]
 
 
 #PARAMETERS of the Self Quest
