@@ -11,16 +11,10 @@
 # Should tune parameters according to our experiments. or event vary them, or make them probabilistic (some of them).
 counter=0
 thresholdSim=0.6 #threshold when Consider 2 concepts as similar
-memory=[] # memory of concepts he checked on wikipedia, he 'knows about'
 fuckedUp=0
 maxFuckedUp=0.3#max ration of fucked up lines
-waitingList=[]
-lengthPath=11 #length walk on the network
-nSearch=3 #Nb word max will look for in Wikipedia
-maxMemory=100 #then forget words again?
-nSimMax=20 #if graph too big, check similarity only for a few words. Depending on how slow it is
+maxMemory=200 #then forget words again?
 nSelf=0
-nbDrift = 1
 
 ###IMPORT general
 import fire
@@ -92,7 +86,7 @@ def MLDrift(seedSentence):
     return drift
 
 #Several successive drifts with GPT2, seeded with a string
-def MLDrifts(seedSentence='Are we human?', nDrift=nbDrift):
+def MLDrifts(seedSentence='Are we human?', nDrift=1):
     counter=0
     blabla=""
     lastbla=""
@@ -135,10 +129,10 @@ def walkOnNetwork(startWord, lengthPath):
         client.emit(Message('speak', data={'utterance': "Walk ended here."})) #or all answer ?
 
 
-def isSelf(word):
+def isSelf(word, nSimMax):
     #Check if a word is related to his selfGraph.
     #This word shall not belong to his selfGraph already. (for now)
-    nSelf=len(selfGraph.keys())
+    nSelf=len(list(selfGraph.keys()))
     #Generate random list of indices where will look for
     indices=random.sample(range(0, nSelf), min(nSimMax, nSelf))
     selfGraph[word]=[0,dict()]   #Add entry to dictionary for now
@@ -175,7 +169,7 @@ def wonder(word):
     return phrase
 
 #A wikipedia Loop to grow his awareness of self, with possibly MLDrift, and the option for it to be audible or not.
-def selfMapping(word, nDrift=1, ifAudible=True):
+def selfMapping(word, nSimMax, nDrift=1, ifAudible=True):
     ###(1) Ask Chris about a work on wikipedia
     if ifAudible:
             question="Christopher, tell me about " + word +"." #For Chris
@@ -192,7 +186,7 @@ def selfMapping(word, nDrift=1, ifAudible=True):
         drift=MLDrifts(answer, nDrift) #ML DRIFT
 
     ##(3) Self Awareness Quest: look if this word is related to Self
-    ifadded, simWord, simScore=isSelf(word)
+    ifadded, simWord, simScore=isSelf(word, nSimMax)
     #State out loud the progress of his selfAwareness quest.
     #Could change and vary this sentence>
     if ifadded:   #Case where word related to a word in SelfGraph.
