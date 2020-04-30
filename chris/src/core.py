@@ -7,9 +7,8 @@
 # Should tune parameters according to our experiments. or event vary them, or make them probabilistic (some of them).
 #>>>>CHANGE and parameters separate? put them in interact ??? HAS TO TEST! lengthML, selfAwareness sentence can change too>>>
 thresholdSim=0.6 #threshold when Consider 2 concepts as similar
-memory=[] # memory of concepts he checked on wikipedia, he 'knows about'
 maxFuckedUp=0.9#max ration of fucked up lines
-maxMemoryVA=200#max memory VA when remember words he has looked up
+maxWordsMemory=200#max memory VA when remember words he has looked up. The first element of memory tells the index of the last element added. To avoid looking for same element repeatedly.
 sleepTime=30
 wonders=["I wonder about W ", "Maybe it is worth for me to look into W ", "What W is all about?", "W still makes me confused."]
 
@@ -34,7 +33,6 @@ wns = WordNetSimilarity()
 
 #IMPORT other scripts
 import wiki #for wikipedia self Mapping
-import initGraph #to initialize the selfGraph
 import conditional_samples as cs #to run the ML script
 import visualize as vis #to visualize the selfGraph
 
@@ -46,23 +44,6 @@ from mycroft_bus_client import MessageBusClient, Message
 client.run_in_thread()
 print('Setting up client to connect to a local mycroft instance')
 client = MessageBusClient()
-
-
-#***********************************************************************PRELIMINARIES*************************************************************************
-
-##STEP 0: Load the self Graph.
-####selfGraph is a dictionnary, whose keys are concepts, and values are couple (weight, neighbors).
-##Neighbors is a dictionnary whose keys are related concepts and values are weights.
-with open('/home/christopher/mycroft-core/chris/data/selfbirth.txt') as json_file:
-    selfGraph = json.load(json_file)
-
-if len(list(selfGraph.keys()))==0: #if selfGraph empty, initialize the graph with initGraph.
-    execfile('initGraph.py')
-    print("Hatching self in process...")
-print("Self is Here.")
-nSelf=len(list(selfGraph.keys()))
-print("Initial Concepts within Self:", list(selfGraph.keys()))
-memory=list(selfGraph.keys()) #The memory of the VA is the words he has looked for on wikipedia. He has a bounded memory (as we do), and once he reaches his limits, he will forget the older words.
 
 
 #***********************************************************************PROCEDURES for ML Drift*************************************************************************
@@ -126,14 +107,14 @@ def cleanText(blabla):
 #***********************************************************************PROCEDURES for SELF QUEST*************************************************************************
 
 #walkOnNetwork, Do a walk on the selfGraph, starting from startWord, and for length lengthWalk unless end up in a leaf of the graph.
-def walkOnNetwork(startWord, lengthWalk):
+def walkOnNetwork(selfGraph, startWord, lengthWalk):
     nStep=0
     deadEnd=False
     word=startWord
     while nStep<lengthWalk and not deadEnd:
         if  len(selfGraph[word][1].keys())>0: #reminder: selfGraph[word][1] is a dictionnary of the neighbors.
             nextWord=random.choice(selfGraph[word][1].keys())
-            statement= "Path  "+ str(round(selfGraph[word][1][nextWord],2)) + " towards "+ nextWord + ", "+ str(round(selfGraph[nextWord][0],3)) + ". "
+            statement= "Path  "+ str(round(chrisGraph[word][1][nextWord],2)) + " towards "+ nextWord + ", "+ str(round(selfGraph[nextWord][0],3)) + ". "
             print(statement)
             client.emit(Message('speak', data={'utterance': statement})) #or all answer ?
             word=nextWord
@@ -145,7 +126,7 @@ def walkOnNetwork(startWord, lengthWalk):
         client.emit(Message('speak', data={'utterance': "Walk ended here."})) #or all answer ?
 
 
-def isSelf(word, nSimMax):
+def isSelf(selfGraph, word, nSimMax):
     #Check if a word (not belonging to his self) is related to his selfGraph.
     indices=random.sample(range(0, nSelf), min(nSimMax, nSelf)) #Generate random list of indices where will look for
     selfGraph[word]=[0,dict()]   #Add entry to dictionary for now
@@ -169,7 +150,7 @@ def isSelf(word, nSimMax):
         del selfGraph[word] #delete entry from SelfGraph therefore
     else: # if related
         selfGraph[word][0]=maxSim*selfGraph[simWord][0] #adjust the weight of the node
-    return ifConnected, simWord, simScore
+    return selfGraph, ifConnected, simWord, simScore
 
 def wonder(word):
     #Generate a sentence wondering about word, depending on choice of wonders.
@@ -181,14 +162,14 @@ def wonder(word):
     return phrase
 
 #A wikipedia Loop to grow his awareness of self, with possibly MLDrift, and the option for it to be audible or not.
-def selfMapping(word, nDrift=1, lengthML=200, nSimMax=5, lengthWalk=10, walkNetwork=False, audibleSelfQuest=False):
+def selfMapping(selfGraph, word, memory, nDrift=1, lengthML=200, nSimMax=5, lengthWalk=10, walkNetwork=False, audibleSelfQuest=False):
     ###(1) Ask Chris about a work on wikipedia
     if audibleSelfQuest:
             question="Christopher, tell me about " + word +"." #For Chris
             phrase=wonder(word) #Phrase to be heard. Generate Others.>>>
-            print("Question:", phrase)
-            memory.append(word.lower()) #Add word to memory when has wiki checked it. Only lowered words here
             client.emit(Message('speak', data={'utterance': phrase}))
+            print("Question:", phrase)
+            #Chris answer
             answer = askChris(question)
     else: #If are not asking the question, are not neither drifting.
         nDrift=0
@@ -196,7 +177,7 @@ def selfMapping(word, nDrift=1, lengthML=200, nSimMax=5, lengthWalk=10, walkNetw
     if nDrift>0:
         drift=MLDrifts(answer, nDrift, lengthML)
     ##(3) Self Awareness Quest: look if this word is related to Self
-    ifadded, simWord, simScore=isSelf(word, nSimMax)
+    selfGraph, ifadded, simWord, simScore=isSelf(word, nSimMax)
     nSelf=len(list(selfGraph.keys()))
     #State out loud the progress of his selfAwareness quest if audibleSelfQuest is True
     if ifadded:   #Case where word related to a word in SelfGraph.
@@ -211,9 +192,19 @@ def selfMapping(word, nDrift=1, lengthML=200, nSimMax=5, lengthWalk=10, walkNetw
         print(selfAwareness)
         if audibleSelfQuest:
             client.emit(Message('speak', data={'utterance': selfAwareness}))
-    return answer, drift, ifadded
+    #(5) Add in Memory. Beware if memory full...
+    if len(memory)==maxWordsMemory+1: #Memory Full, erase the older one.
+        if memory[0]==len(memory)-1:
+            memory[0]=str(1)
+        else:
+            memory[0]=str(int(memory[0])+1)
+        memory[memory[0]]=word
+    else:
+        memory.append(word.lower()) #Add word to memory when has wiki checked it. Only lowered words here
+        memory[0]=str(int(memory[0])+1) #in 0 element keep track
+    return selfGraph, memory, answer, drift, ifadded
 
-def selfMapLoops(blabla, nLoop, nDrift, lengthML, nSimMax, memory, nSearch, lengthWalk=10, walkNetwork=False, delayedSelfQuest=True, audibleSelfQuest=False):
+def selfMapLoops(selfGraph, blabla, nLoop, nDrift, lengthML, nSimMax, memory, nSearch, lengthWalk=10, walkNetwork=False, delayedSelfQuest=True, audibleSelfQuest=False):
     #(0) Look at words for which exist wikipedia Page and not in selfGraph nor in memory. nSearch  is the Nb word max will look for in Wikipedia
     OKWikipedia,OKWiktionary,selfGraph=wiki.extract(blabla, selfGraph, memory, nSearch)#actually real nSearch may double because of composed words.
     answer=""
@@ -225,11 +216,11 @@ def selfMapLoops(blabla, nLoop, nDrift, lengthML, nSimMax, memory, nSearch, leng
     if len(OKWikipedia)==0: #If the list is empty
         blabla=MLDrifts(blabla, nDrift, lengthML)
         if nLoop>1:
-            addedWords, blabla=selfMapLoops(answer, nLoop-1, nDrift, lengthML, nSimMax,  memory, nSearch, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest)
+            selfGraph, memory, addedWords, blabla=selfMapLoops(selfGraph, answer, nLoop-1, nDrift, lengthML, nSimMax,  memory, nSearch, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest)
     elif delayedSelfQuest:#Take them all in OKWikipedia in that case, but ignore Loop
         for word in OKWikipedia:
             print("Look up word:", word)
-            answer, drift, ifadded=selfMapping(word, nDrift, lengthML, nSimMax, lengthWalk, walkNetwork, audibleSelfQuest)
+            selfGraph, memory, answer, drift, ifadded=selfMapping(selfGraph, word, memory, nDrift, lengthML, nSimMax, lengthWalk, walkNetwork, audibleSelfQuest)
             blabla=answer + "\n"+ drift
             if ifadded:
                 addedWords.append(word)
@@ -237,16 +228,16 @@ def selfMapLoops(blabla, nLoop, nDrift, lengthML, nSimMax, memory, nSearch, leng
         word=random.choice(OKWikipedia)
         print("Look up word:", word)
         #(1B) else, pick a word and try to look it up
-        answer, drift, ifadded=selfMapping(word, nDrift, lengthML, nSimMax, lengthWalk, walkNetwork, audibleSelfQuest)
+        selfGraph, memory, answer, drift, ifadded=selfMapping(selfGraph, word, memory, nDrift, lengthML, nSimMax, lengthWalk, walkNetwork, audibleSelfQuest)
         #(2B) then, ML drift from answer if added the world, or last drift
         if nLoop>1 and ifadded:
-            addedWords, blabla=selfMapLoops(answer, nLoop-1, nDrift, lengthML, nSimMax, memory, nSearch, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest)
+            selfGraph, memory, addedWords, blabla=selfMapLoops(selfGraph, answer, nLoop-1, nDrift, lengthML, nSimMax, memory, nSearch, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest)
             addedWords.append(word)
             blabla="\n"+ answer + "\n"+ drift +"\n"+ blabla
         elif nLoop>1:
-            addedWords, blabla=selfMapLoops(drift, nLoop-1, nDrift, lengthML, nSimMax, memory, nSearch, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest)
+            selfGraph, memory, addedWords, blabla=selfMapLoops(selfGraph, drift, nLoop-1, nDrift, lengthML, nSimMax, memory, nSearch, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest)
             blabla="\n"+ answer + "\n"+ drift +"\n"+ blabla
-    return addedWords, blabla
+    return selfGraph, memory, addedWords, blabla
 
 #Compute semantic similarity score between 2 words.
 #Could Try other possibilities for semabtic sim>>>  Beware then, score like 0.03 so adjust threshold>>>
@@ -324,8 +315,8 @@ def oneCycle(question="Christopher, tell me about acid rain.",  answerHuman=Fals
         answer = askChris(question)
         print("Answer", answer)
     #(2) Self Mapping Loops involving Wikipedia loopup, similarity with Self checkup, walk on the network and possibly ML Drifts
-    addedWords, blabla=selfMapLoops(question, nLoop, nDrift, lengthML, nSimMax, memory, nSearch, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest)
+    selfGraph, memory, addedWords, blabla=selfMapLoops(selfGraph, question, nLoop, nDrift, lengthML, nSimMax, memory, nSearch, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest)
     #(3) Save and Visualize new self Graph
     saveGraph()
     vis.drawGraph()
-    return blabla
+    return selfGraph, memory, blabla

@@ -4,6 +4,8 @@
 
 
 #***********************************************************************CUSTOMIZATION***************************************************************************
+firstTime=False #Put True if first time run these scripts, so will initialize the self graph
+visualizeGraph=False #To visualize selfGraph
 
 disruptiveness=0.5 #parameter between 0 and 1 how much would interact...>>>
 
@@ -43,7 +45,7 @@ from nltk import word_tokenize, sent_tokenize, pos_tag
 ###IMPORT scripts
 import core #Main script, with the different procedures
 #import conditional_samples as cs #to run the ML script
-
+import visualize as vis #to visualize the selfGraph
 
 ###PARAMETERS #Do not modify
 mycroftTriggers=dict()
@@ -54,6 +56,33 @@ mycroftTriggers["laugh"]="Christopher, random laughter."
 mycroftTriggers["toRemember"]="Christopher, remember "
 mycroftTriggers["DuckDuckGo"]="Christopher, "
 mycroftTriggers["Wikipedia"]="Christopher, tell me about "
+
+
+#***********************************************************************PRELIMINARIES*************************************************************************
+
+##STEP 0: Load the self Graph, his words Memory and what he remembers.
+####selfGraph is a dictionnary, whose keys are concepts, and values are couple (weight, neighbors).
+if firstTime:
+    print("Hatching self in process...")
+    execfile('initGraph.py')
+    with open('/home/christopher/mycroft-core/chris/data/selfbirth.txt') as json_file:
+        selfGraph = json.load(json_file)
+        wordsMemory=list(selfGraph.keys()) #The memory of the VA is the words he has looked for on wikipedia.
+        wo=wordsMemory[0]#To remember where is last element added
+        wordsMemory[0]=str(len(wordsMemory))
+        wordsMemory[0].append(wo)
+else:
+    with open('/home/christopher/mycroft-core/chris/data/selfgraph.txt') as json_file:
+        selfGraph = json.load(json_file)
+    with open('/home/christopher/mycroft-core/chris/data/wordsMemory.txt', "r") as f:
+        wordsMemory=f.readlines() #List of words concepts he looked up
+    with open('/home/christopher/mycroft-core/chris/data/whatIRemember.txt', "r") as f:
+        rememberedStuff=f.readlines() #List of what he remembers
+
+print("I am here.")
+print("I am made of:", list(selfGraph.keys()))
+nSelf=len(list(selfGraph.keys()))
+
 
 #***********************************************************************PROCEDURES*************************************************************************
 
@@ -110,7 +139,7 @@ def growSelfGraph(lengthML=200, nSimMax=20, nSearch=200, lengthWalk=10, walkNetw
     blablaHuman =f.read() #take in all what have heard
     f.truncate(0)
     f.close()
-    addedWords, blablaQuest=core.selfMapLoops(blablaHuman, 1, 0, lengthML, nSimMax, memory, nSearch, lengthWalk, walkNetwork, True, audibleSelfQuest)
+    selfGraph, wordsMemory, addedWords, blablaQuest=core.selfMapLoops(selfGraph, blablaHuman, 1, 0, lengthML, nSimMax, wordsMemory, nSearch, lengthWalk, walkNetwork, True, audibleSelfQuest)
     print(addedWords)
     return addedWords, blablaQuest
 
@@ -138,16 +167,28 @@ def interactLoop(mood='neutral', lengthML=200, nMLDrift=1, nSimMax, nSearch, ifE
     blablaVA=drift(blabla, mood, lengthML)
     #(3) Self Quest: Wikipedia Check, Self Graph (Or happen later at end if too slow ?)
     if ifEvolve and not delayedSelfQuest:
-        addedWords, blablaQuest=core.selfMapLoops(blablaHuman, 1, 1, lengthML, nSimMax,  memory, nSearch, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest)
-    #(4)Add the text heard in file, so later could grow from it. Only if ifEvolve !
+        selfGraph, wordsMemory, addedWords, blablaQuest=core.selfMapLoops(selfGraph, blablaHuman, 1, 1, lengthML, nSimMax,  wordsMemory, nSearch, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest)
+
+    #(4) UPDATES only ifEvolve
+    #Save the selfGraph and Update the files at the end of the interaction (the text heard (to grow form it), the  wordsMemory, the remember)
     if ifEvole:
+        with open('./chris/data/selfgraph.txt', 'w') as outfile:
+            json.dump(selfGraph, outfile)
+            nN=len(selfGraph.keys())
+            print("Self has " + str(nN) + " nodes.")
+        with open('/home/christopher/mycroft-core/chris/data/whatIRemember.txt', "w") as f:#renew each time there is an interaction
+            f.write("\n".join(rememberedStuff))
+        with open('/home/christopher/mycroft-core/chris/data/wordsMemory.txt', "w") as f:#renew each time there is an interaction
+           f.write("\n".join(wordsMemory))
         with open('/home/christopher/mycroft-core/chris/data/whatIHeard.txt', "a") as f:#renew each time there is an interaction
            f.write(blablaHuman)
         with open('/home/christopher/mycroft-core/chris/data/ALLwhatIHeard.txt', "a") as f:#cumulated
            f.write(blablaHuman)
     return blablaVA
 
-
+    #(5) Visualise graph if specified.
+    if visualizeGraph:
+        vis.drawGraph()
 
 #***********************************************************************END*************************************************************************
 
