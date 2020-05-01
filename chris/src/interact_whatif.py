@@ -21,14 +21,9 @@ customTriggers["Wikipedia"]=["beginsByCut", ["I know about "]] #I know about ...
 
 
 moodSeeds=dict()
-moodSeeds["curious"]=["Why are they", "Why do they", "How could we", "I wonder if", "I wonder how", "Why are there still", "What should we think of", "Is there something like"]
-moodSeeds["confrontational"]=["Maybe not.", "Yet, I feel this is wrong. ", "I would argue against this.", "I would prefer not to.", "What if this is bullshit?", "I don't believe in this. Listen,"]
-moodSeeds["thrilled"]=["Amazing.", "That is wonderful.", "How beautiful is this.", "That is incredible."]
-moodSeeds["emotional"]=["It makes me feel", "I feel like"]
-moodSeeds["appreciative"]=["Let us appreciate how", "Let us contemplate the", "Now, let us breathe and take a moment for", "Let us welcome the", "Let us appreciate what", "Instead of opposing, we shoud embrace", "I would like to thank the world for what"]
-moodSeeds["thrilled"]=["Amazing.", "That is wonderful.", "How beautiful is this.", "That is incredible."]
+moodSeeds["whatif"]=["What if they", "What if we", "What if the", "What if", "Imagine if", "Imagine that tomorrow", "Can you imagine that"]
 
-pMoody=0.2 #If want to randomize emotions>>
+
 
 #***********************************************************************INITIALIZATION***************************************************************************
 
@@ -165,7 +160,7 @@ def interactLoop(mood='neutral', lengthML=200, nMLDrift=1, nSimMax, nSearch, ifE
     #(1) May Trigger a reaction, if something has been heard. If it is a bla, do it for each sentence if trigger something
     trigger, answer=trigger(blablaHuman)
     #(2) MLDrift, from what has been said, in a certain mood
-    blablaVA=drift(blabla, mood, lengthML)
+    blablaVA=drift(blabla, 'whatif', lengthML)
     #(3) Self Quest: Wikipedia Check, Self Graph (Or happen later at end if too slow ?)
     if ifEvolve and not delayedSelfQuest:
         selfGraph, wordsMemory, addedWords, blablaQuest=core.selfMapLoops(selfGraph, blablaHuman, 1, 1, lengthML, nSimMax,  wordsMemory, nSearch, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest)

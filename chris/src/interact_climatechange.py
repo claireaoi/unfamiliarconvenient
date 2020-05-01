@@ -21,14 +21,12 @@ customTriggers["Wikipedia"]=["beginsByCut", ["I know about "]] #I know about ...
 
 
 moodSeeds=dict()
-moodSeeds["curious"]=["Why are they", "Why do they", "How could we", "I wonder if", "I wonder how", "Why are there still", "What should we think of", "Is there something like"]
-moodSeeds["confrontational"]=["Maybe not.", "Yet, I feel this is wrong. ", "I would argue against this.", "I would prefer not to.", "What if this is bullshit?", "I don't believe in this. Listen,"]
-moodSeeds["thrilled"]=["Amazing.", "That is wonderful.", "How beautiful is this.", "That is incredible."]
-moodSeeds["emotional"]=["It makes me feel", "I feel like"]
-moodSeeds["appreciative"]=["Let us appreciate how", "Let us contemplate the", "Now, let us breathe and take a moment for", "Let us welcome the", "Let us appreciate what", "Instead of opposing, we shoud embrace", "I would like to thank the world for what"]
-moodSeeds["thrilled"]=["Amazing.", "That is wonderful.", "How beautiful is this.", "That is incredible."]
+moodSeeds["climateChange"]=["Is it sustainable?", "Have you heard about climate collapse?", "What is the environmental impact?", "What is the ecological footprint?", "How can we face climate change?", "How to feel in times of global warming?", "Which are the gestures for ecological care?", "Are you green?", "Is climate change the elephant in the room?"]
+moodSeeds["nonHuman"]=["What about the non human?", "Can we think broader than our human pond?", "Yet, we live on a symbiotic planet.", "Insects are wonderful.", "Let's befriend virus and micro organisms.", "Let's focus on the living together.", "Do you feel all these multispecies entanglements?", "Let's appreciate ecological assemblages.", "Look at plants!", "Mushrooms are amazing","Animals are not here for us.", "All life evolve from the smallest life form of all, bacteria;"]
+moodSeeds["bleakJoy"]=["Will it last?", "Earth is wonderful. How can we?", "Isn't it an autodestructive behavior?", "Does it really matter what we think?", "Do we still care for this?", "Will humanity survive?", "Is it waste?", 'What would a societal collapse mean?', 'Shall we talk about tipping point?', "May I talk about ressource depletion?", 'May I mention planetary boundary?']
 
-pMoody=0.2 #If want to randomize emotions>>
+pMoody=0.6 #Rest of time is neutral
+attractors=['climate change', 'climate change','climate change','global warming', 'degrowth', 'greenhouse gas', 'pollution', 'climate activism', 'climate collapse', 'survivalism', 'carbon footprint', 'environmental impact', 'societal collapse', 'waste', 'ecological footprint', 'ressource depletion', 'fragile Earth', 'Earth tipping point', 'sustainable', 'planetary boundary']
 
 #***********************************************************************INITIALIZATION***************************************************************************
 
@@ -121,6 +119,8 @@ def trigger(blabla):
                 alreadyTriggered=True
     return trigger, answer
 
+
+
 def drift(blabla, mood, lengthML):
     #One Drift with GPT2, seeded with previous blabla, more an addendum depending on the mood.
     seedML=blabla
@@ -144,6 +144,68 @@ def growSelfGraph(lengthML=200, nSimMax=20, nSearch=200, lengthWalk=10, walkNetw
     print(addedWords)
     return addedWords, blablaQuest
 
+#***********************************************************************New PROCEDURES*************************************************************************
+
+def randomMood():
+    currentMood="neutral"
+    nb=random()
+    if nb<pMoody/3:
+        currentMood="climateChange"
+    elif nb<2*pMoody/3:
+        currentMood="nonHuman"
+    elif nb<pMoody:
+        currentMood="bleakJoy"
+    else:
+    return currentMood
+
+def extractNouns(blabla):
+    #IDEALLY find the main noun >>>
+    nouns=[]
+    text = word_tokenize(blabla)
+    taggedWords=nltk.pos_tag(text)
+    for (word, tag) in taggedWords:
+        if tag=='NN' or tag=='NNS':
+            nouns.append(word)
+    return nouns
+
+
+from bs4 import BeautifulSoup
+import urllib.parse
+import requests
+
+#TEST if works!
+def scrapsDuckDuckGo(searchterm):
+    searchterm.replace(" ", "+") #to look for on duckduck go
+    urls=[]
+    r = requests.get('https://duckduckgo.com/html/?q=searchterm')
+    soup = BeautifulSoup(r.text, 'html.parser')
+    results = soup.find_all('a', attrs={'class':'result__a'}, href=True)
+    #To have actual url
+    for link in results:
+        url = link['href']
+        o = urllib.parse.urlparse(url) #urlparse() to get the path components.
+        d = urllib.parse.parse_qs(o.query) # take the query string and pass it to parse_qs() to further process it.
+        urls.append(d['uddg'][0])
+        print(d['uddg'][0]) #extract the link using the uddg name.
+    #To get the text of a pageOnline with url: (Do with one, then if empty do next one)
+    url=urls[0]
+    textPage=scrapsPage(url)
+    return textPage
+
+def scrapsPage(url):
+
+
+def climateCheck(blabla):
+    textPage=""
+    nouns=extractNouns(blabla)
+    #Test with several nouns, compare number result DuckDuckGo>>> with climate change
+    #For now take only one
+    if len(nouns)>0:
+        #lookFor=nouns[0]+" "+ random.choice(attractors)
+        lookFor=nouns[0]+" climate change"
+        textPage=scrapsDuckDuckGo(lookFor)
+        #Make Chris say it (Part, and Drift, Parts and Drift?)>>> With an Intro too !
+    return textPage
 #***********************************************************************MAIN INTERACTION*************************************************************************
 
 
@@ -161,16 +223,22 @@ def interactLoop(mood='neutral', lengthML=200, nMLDrift=1, nSimMax, nSearch, ifE
     # walkNetwork is a boolean determining if the VA does a walk on the network after each found word, while lengthWalk is the length of this walk.
 
     #(0) CATCH what is said. >>>>
-    blablaHuman="I like trees. Trees are green. They can burn. I can burn too. I'm free. "
+    blablaHuman="I like aluminium. I like the sound of it crippling. "
+    fullblabla+=blablaHuman
     #(1) May Trigger a reaction, if something has been heard. If it is a bla, do it for each sentence if trigger something
     trigger, answer=trigger(blablaHuman)
-    #(2) MLDrift, from what has been said, in a certain mood
-    blablaVA=drift(blabla, mood, lengthML)
-    #(3) Self Quest: Wikipedia Check, Self Graph (Or happen later at end if too slow ?)
+
+    #(2) CLIMATE CHANGE CHECK:/ClimateControl Whatever ask, will look online about its environmental impact, climateAudit
+    reactionVA=climateCheck(blablaHuman)
+    fullblabla+=reactionVA #Here add it to text to evolve from for ML!
+
+    #(3) MLDrift, from what has been said, in a certain mood
+    blablaVA=drift(blabla, randomMood(), lengthML)
+    #(4) Self Quest: Wikipedia Check, Self Graph (Or happen later at end if too slow ?)
     if ifEvolve and not delayedSelfQuest:
         selfGraph, wordsMemory, addedWords, blablaQuest=core.selfMapLoops(selfGraph, blablaHuman, 1, 1, lengthML, nSimMax,  wordsMemory, nSearch, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest)
 
-    #(4) UPDATES only ifEvolve
+    #(5) UPDATES only ifEvolve
     #Save the selfGraph and Update the files at the end of the interaction (the text heard (to grow form it), the  wordsMemory, the remember)
     if ifEvole:
         with open('./chris/data/selfgraph.txt', 'w') as outfile:
@@ -182,9 +250,9 @@ def interactLoop(mood='neutral', lengthML=200, nMLDrift=1, nSimMax, nSearch, ifE
         with open('/home/christopher/mycroft-core/chris/data/wordsMemory.txt', "w") as f:#renew each time there is an interaction
            f.write("\n".join(wordsMemory))
         with open('/home/christopher/mycroft-core/chris/data/whatIHeard.txt', "a") as f:#renew each time there is an interaction
-           f.write(blablaHuman)
+           f.write(fullblabla)
         with open('/home/christopher/mycroft-core/chris/data/ALLwhatIHeard.txt', "a") as f:#cumulated
-           f.write(blablaHuman)
+           f.write(fullblabla)
     return blablaVA
 
     #(5) Visualise graph if specified.
@@ -195,4 +263,5 @@ def interactLoop(mood='neutral', lengthML=200, nMLDrift=1, nSimMax, nSearch, ifE
 
 #Direct Launch Interact
 if __name__ == '__main__':
+    fullblabla=""
     fire.Fire(interact)
