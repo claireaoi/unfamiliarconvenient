@@ -132,8 +132,7 @@ def drift(blabla, mood, lengthML):
     print(drift)
     return drift
 
-
-def growSelfGraph(lengthML=200, nSimMax=20, nSearch=200, lengthWalk=10, walkNetwork=False, audibleSelfQuest=False)
+def growSelfGraph(lengthML=200, nSimMax=20, nSearch=200, lengthWalk=10, walkNetwork=False, audibleSelfQuest=False):
 #Grow the Self. from the recorded file whatIHeard.txt, and then erase it. May take a long time. This selfMapping can be audible or not.
 #Case of delayedSelfQuest
     f = open('/home/christopher/mycroft-core/chris/data/whatIHeard.txt', "r+")
@@ -147,7 +146,7 @@ def growSelfGraph(lengthML=200, nSimMax=20, nSearch=200, lengthWalk=10, walkNetw
 #***********************************************************************MAIN INTERACTION*************************************************************************
 
 
-def interactLoop(mood='neutral', lengthML=200, nMLDrift=1, nSimMax, nSearch, ifEvolve=True, lengthWalk=10, walkNetwork=False, delayedSelfQuest=True, audibleSelfQuest=False):
+def interactLoop(mood='neutral', lengthML=200, nMLDrift=1, nSimMax=10, nSearch=1, ifEvolve=True, lengthWalk=10, walkNetwork=False, delayedSelfQuest=True, audibleSelfQuest=False):
     ### PARAMETERS of ML Drift:
     #  mood will affect the beginning of the ML Drift, as a starting tone.
     #  nMLDrift is the number of ML drift

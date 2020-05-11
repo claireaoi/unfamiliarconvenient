@@ -307,7 +307,7 @@ def saveGraph():
         print("Self has " + str(nN) + " nodes.")
 
 
-def oneCycle(question="Christopher, tell me about acid rain.",  answerHuman=False, nLoop=1, nDrift=1, lengthML, nSimMax, memory, nSearch, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest=False):
+def oneCycle(question,  answerHuman, nLoop, nDrift, lengthML, nSimMax, memory, nSearch, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest=False):
     #(0) Ask Question. Add the part when this question is picked from audio
     print("Question:", question)
     #(1) Chris answer only if answerHuman
