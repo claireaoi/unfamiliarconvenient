@@ -2,14 +2,11 @@
 
 #Comment below for ...
 #source ./myenv/bin/activate
+
+
+./start-mycroft.sh all
 export PYTHONIOENCODING=UTF-8
 
-
-#For acidLoops
-#python3 src/drift.py --question="Tell me about acid rain." --nLoop=2 --nDrift=2
-
-#For test
-#python3 src/test0.py
 
 #For interact
 python3 chris/src/interact.py \
@@ -24,3 +21,9 @@ python3 chris/src/interact.py \
 --walkNetwork=False \
 --delayedSelfQuest=True \
 --audibleSelfQuest=False
+
+#For acidLoops
+#python3 src/drift.py --question="Tell me about acid rain." --nLoop=2 --nDrift=2
+
+#For test
+#python3 src/test0.py
