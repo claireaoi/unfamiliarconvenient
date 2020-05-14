@@ -25,27 +25,21 @@ memory=[]
 #Here, words are extracted from the Chris & roomba manuals. Could update this, and in this case relaunch the procedures
 #They are written on the file wiki.txt
 #(0) Read starting text corresponding to Chris and Roomba.
-with open('/home/christopher/mycroft-core/chris/data/chris.txt') as f:
+with open('./chris/data/seedChris.txt') as f:
    rawChris= ''.join(f.readlines()) #Text with list words
-with open('/home/christopher/mycroft-core/chris/data/roo.txt') as f:
-   rawRoo= ''.join(f.readlines()) #Text with list words
 #(1) Extract wikipedia-ble words from these texts and put them in a waiting List, and start a selfGraph which is a dictionnary in Python
 #For now, only with Wikipedia. Could add wiktionary and DuckDuck Go >
 chrisWikipedia,chrisWiktionary,VoidGraph=wiki.extract(rawChris, dict(), memory, nSearch)
-rooWikipedia,rooWiktionary,VoidGraph=wiki.extract(rawRoo, dict(), memory, nSearch)
-waitingList = chrisWikipedia + list(set(rooWikipedia) - set(chrisWikipedia))  #Concatenate both without duplicate
 #Record this in a text file
-fileW = open("/home/christopher/mycroft-core/chris/data/wiki.txt","w")
+fileW = open("./chris/data/wiki.txt","w")
 print('writing wiki files')
-#fileW.writelines(waitingList)
-#fileW.writelines("%s\n" % elt for elt in waitingList) #Ok different lines ?
-fileW.writelines(elt + "\n" for elt in waitingList) #Ok different lines ? and this ?
+fileW.writelines(elt + "\n" for elt in chrisWikipedia) #Ok different lines ? and this ?
 fileW.close()
 
 ###STEP 2: Initialize the selfGraph
 ###selfGraph is a dictionnary, whose keys are concepts, and values are couple (weight, neighbors).
 ##Neighbors is a dictionnary whose keys are related concepts and values are weights
-waitingList= [line.rstrip() for line in open("/home/christopher/mycroft-core/chris/data/wiki.txt")] #Text with list of initial words
+waitingList= [line.rstrip() for line in open("./chris/data/wiki.txt")] #Text with list of initial words
 selfGraph=dict.fromkeys(waitingList)
 #Init graph: each node is initialised with weight startingWeight=0.5. This weight can evolve (increase, though always between 0 and 1)
 for key in selfGraph.keys(): #[weight, neighbors]
@@ -111,5 +105,5 @@ print("My Clustering coefficient is:")
 print("My Algebraic Connectivity Coefficient is:")
 
 #STEP 4: SAVE it in a file selfbirth.txt.
-with open('/home/christopher/mycroft-core/chris/data/selfbirth.txt', 'w') as outfile:
+with open('./chris/data/selfbirth.txt', 'w') as outfile:
     json.dump(selfGraph, outfile)

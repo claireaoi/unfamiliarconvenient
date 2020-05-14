@@ -1,13 +1,11 @@
 
 
+#Main Script for the Interaction between you and your voice assistant
 
 
 
 #***********************************************************************CUSTOMIZATION***************************************************************************
 firstTime=False #Put True if first time run these scripts, so will initialize the self graph
-visualizeGraph=False #To visualize selfGraph
-
-disruptiveness=0.5 #parameter between 0 and 1 how much would interact...>>>
 
 #PARAMETERS of the trigger
 customTriggers=dict()
@@ -28,8 +26,6 @@ moodSeeds["emotional"]=["It makes me feel", "I feel like"]
 moodSeeds["appreciative"]=["Let us appreciate how", "Let us contemplate the", "Now, let us breathe and take a moment for", "Let us welcome the", "Let us appreciate what", "Instead of opposing, we shoud embrace", "I would like to thank the world for what"]
 moodSeeds["thrilled"]=["Amazing.", "That is wonderful.", "How beautiful is this.", "That is incredible."]
 
-pMoody=0.2 #If want to randomize emotions>>
-
 #***********************************************************************INITIALIZATION***************************************************************************
 
 ###IMPORT libraries
@@ -42,13 +38,22 @@ from nltk.corpus import words, wordnet
 from nltk.stem.wordnet import WordNetLemmatizer
 import urllib.request
 from nltk import word_tokenize, sent_tokenize, pos_tag
+import keyboard  # using module keyboard
 
 ###IMPORT scripts
 import core #Main script, with the different procedures
-#import conditional_samples as cs #to run the ML script
 import visualize as vis #to visualize the selfGraph
 
-###PARAMETERS #Do not modify
+#Import for Mycroft
+import os.path
+from os import path
+from mycroft_bus_client import MessageBusClient, Message
+from mycroft.audio import wait_while_speaking
+
+###PARAMETERS
+#Do not modify
+lastHumanBla="I like trees. Trees are green. They can burn. I can burn too. I'm free. "
+loopCount=0
 mycroftTriggers=dict()
 mycroftTriggers["audioRecord"]="Christopher, start recording for 2 minutes."
 mycroftTriggers["audioPlay"]="Christopher, play the recording."
@@ -59,25 +64,33 @@ mycroftTriggers["DuckDuckGo"]="Christopher, "
 mycroftTriggers["Wikipedia"]="Christopher, tell me about "
 
 
+#Mycroft Catching what human say
+print('Setting up client to connect to a local mycroft instance. ')
+client = MessageBusClient()
+print('Conversation may start.')
+client.on('recognizer_loop:utterance', record_human_utterance)
+wait_while_speaking() #wait for Mycroft to finish speaking. Useless now, but will be helpful later
+client.run_forever()
+
 #***********************************************************************PRELIMINARIES*************************************************************************
 
 ##STEP 0: Load the self Graph, his words Memory and what he remembers.
 ####selfGraph is a dictionnary, whose keys are concepts, and values are couple (weight, neighbors).
 if firstTime:
     print("Hatching self in process...")
-    execfile('initGraph.py')
-    with open('/home/christopher/mycroft-core/chris/data/selfbirth.txt') as json_file:
+    execfile('./chris/src/initGraph.py')
+    with open('./chris/data/selfbirth.txt') as json_file:
         selfGraph = json.load(json_file)
         wordsMemory=list(selfGraph.keys()) #The memory of the VA is the words he has looked for on wikipedia.
         wo=wordsMemory[0]#To remember where is last element added
         wordsMemory[0]=str(len(wordsMemory))
         wordsMemory[0].append(wo)
 else:
-    with open('/home/christopher/mycroft-core/chris/data/selfgraph.txt') as json_file:
+    with open('./chris/data/selfgraph.txt') as json_file:
         selfGraph = json.load(json_file)
-    with open('/home/christopher/mycroft-core/chris/data/wordsMemory.txt', "r") as f:
+    with open('./chris/data/wordsMemory.txt', "r") as f:
         wordsMemory=f.readlines() #List of words concepts he looked up
-    with open('/home/christopher/mycroft-core/chris/data/whatIRemember.txt', "r") as f:
+    with open('./chris/data/whatIRemember.txt', "r") as f:
         rememberedStuff=f.readlines() #List of what he remembers
 
 print("I am here.")
@@ -121,8 +134,9 @@ def trigger(blabla):
                 alreadyTriggered=True
     return trigger, answer
 
-def drift(blabla, mood, lengthML):
-    #One Drift with GPT2, seeded with previous blabla, more an addendum depending on the mood.
+
+def drifts(blabla, mood, lengthML, nMLDrift):
+    #Few Drift with GPT2, seeded with previous blabla, more an addendum depending on the mood.
     seedML=blabla
     if mood in moodSeeds.keys():
         seedML+= " " + random.choice(moodSeeds[mood])
@@ -130,12 +144,14 @@ def drift(blabla, mood, lengthML):
     #drift= cs.cond_model(model_name='124M',seed=None, nsamples=2, batch_size=1,length=lengthML,temperature=1.0,top_k=0,top_p=1, models_dir='./chris/models', blabla = seedML)
     client.emit(Message('speak', data={'utterance': drift})) #does it say this or just will answer?
     print(drift)
+    if nMLDrift>1:
+        drift+=drifts(drift, mood, lengthML, nMLDrift-1)
     return drift
 
 def growSelfGraph(lengthML=200, nSimMax=20, nSearch=200, lengthWalk=10, walkNetwork=False, audibleSelfQuest=False):
 #Grow the Self. from the recorded file whatIHeard.txt, and then erase it. May take a long time. This selfMapping can be audible or not.
 #Case of delayedSelfQuest
-    f = open('/home/christopher/mycroft-core/chris/data/whatIHeard.txt', "r+")
+    f = open('./chris/data/whatIHeard.txt', "r+")
     blablaHuman =f.read() #take in all what have heard
     f.truncate(0)
     f.close()
@@ -143,10 +159,19 @@ def growSelfGraph(lengthML=200, nSimMax=20, nSearch=200, lengthWalk=10, walkNetw
     print(addedWords)
     return addedWords, blablaQuest
 
+
+#Record the utterance of the Human
+def record_human_utterance(message):
+    said = str(message.data.get('utterances')[0])
+    print(f'Human said "{said}"')
+    lastHumanBla=said #record it in global variable
+    #with open('learnings.txt', 'a+') as t: #
+        #t.write(said + ' ')
+
 #***********************************************************************MAIN INTERACTION*************************************************************************
 
 
-def interactLoop(mood='neutral', lengthML=200, nMLDrift=1, nSimMax=10, nSearch=1, ifEvolve=True, lengthWalk=10, walkNetwork=False, delayedSelfQuest=True, audibleSelfQuest=False):
+def interact(mood='neutral', lengthML=200, nMLDrift=1, nSimMax=10, nSearch=1, ifEvolve=True, lengthWalk=10, walkNetwork=False, delayedSelfQuest=True, audibleSelfQuest=False, visualizeGraph=False):
     ### PARAMETERS of ML Drift:
     #  mood will affect the beginning of the ML Drift, as a starting tone.
     #  nMLDrift is the number of ML drift
@@ -158,37 +183,43 @@ def interactLoop(mood='neutral', lengthML=200, nMLDrift=1, nSimMax=10, nSearch=1
     # audibleSelfQuest determine if the Self Quest would be audible (in case is not delayed)
     #  ifEvolve means the interaction is recorded, and Chris will grow it self from it, also ML will be trained on it. Else, can freeze the VA
     # walkNetwork is a boolean determining if the VA does a walk on the network after each found word, while lengthWalk is the length of this walk.
-
-    #(0) CATCH what is said. >>>>
-    blablaHuman="I like trees. Trees are green. They can burn. I can burn too. I'm free. "
+    loopCount++
+    #(0) CATCH what Human say
+    print('Interaction n°', loopCount)
+    client.on('recognizer_loop:utterance', record_human_utterance)
+    print('Human said', lastHumanBla)
     #(1) May Trigger a reaction, if something has been heard. If it is a bla, do it for each sentence if trigger something
-    trigger, answer=trigger(blablaHuman)
+    trigger, answer=trigger(lastHumanBla)
     #(2) MLDrift, from what has been said, in a certain mood
-    blablaVA=drift(blabla, mood, lengthML)
-    #(3) Self Quest: Wikipedia Check, Self Graph (Or happen later at end if too slow ?)
-    if ifEvolve and not delayedSelfQuest:
-        selfGraph, wordsMemory, addedWords, blablaQuest=core.selfMapLoops(selfGraph, blablaHuman, 1, 1, lengthML, nSimMax,  wordsMemory, nSearch, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest)
+    blablaVA=drifts(lastHumanBla, mood, lengthML, nMLDrift)
 
-    #(4) UPDATES only ifEvolve
+    #(3) ifEvolve, the VA records what has been said to later grow from it
     #Save the selfGraph and Update the files at the end of the interaction (the text heard (to grow form it), the  wordsMemory, the remember)
     if ifEvole:
-        with open('./chris/data/selfgraph.txt', 'w') as outfile:
-            json.dump(selfGraph, outfile)
-            nN=len(selfGraph.keys())
-            print("Self has " + str(nN) + " nodes.")
-        with open('/home/christopher/mycroft-core/chris/data/whatIRemember.txt', "w") as f:#renew each time there is an interaction
+        with open('./chris/data/whatIHeard.txt', "a") as f:#Last historics before Chris learned
+           f.write(lastHumanBla)
+        with open('./chris/data/ALLwhatIHeard.txt', "a") as f:#Cumulated Historics
+           f.write(lastHumanBla)
+        with open('./chris/data/whatIRemember.txt', "w") as f:
             f.write("\n".join(rememberedStuff))
-        with open('/home/christopher/mycroft-core/chris/data/wordsMemory.txt', "w") as f:#renew each time there is an interaction
-           f.write("\n".join(wordsMemory))
-        with open('/home/christopher/mycroft-core/chris/data/whatIHeard.txt', "a") as f:#renew each time there is an interaction
-           f.write(blablaHuman)
-        with open('/home/christopher/mycroft-core/chris/data/ALLwhatIHeard.txt', "a") as f:#cumulated
-           f.write(blablaHuman)
+        with open('./chris/data/wordsMemory.txt', "w") as f:
+            f.write("\n".join(wordsMemory))
     return blablaVA
-
+        #(4) If Self Quest: Check some words heard on wikipedia, and grow his SelfGraph. Even though may be slow
+        if not delayedSelfQuest:
+            selfGraph, wordsMemory, addedWords, blablaQuest=core.selfMapLoops(selfGraph, lastHumanBla, 1, 1, lengthML, nSimMax,  wordsMemory, nSearch, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest)
+            with open('./chris/data/selfgraph.txt', 'w') as outfile:
+                json.dump(selfGraph, outfile)
+                nN=len(selfGraph.keys())
+                print("Self has " + str(nN) + " nodes.")
     #(5) Visualise graph if specified.
     if visualizeGraph:
         vis.drawGraph()
+
+    #(6) Go on unless press key 'q' on keyboard
+    if not keyboard.is_pressed('q'):
+        interact(mood, lengthML, nMLDrift, nSimMax, nSearch, ifEvolve, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest, visualizeGraph)
+
 
 #***********************************************************************END*************************************************************************
 

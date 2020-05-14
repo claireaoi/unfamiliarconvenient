@@ -1,7 +1,5 @@
 
 
-
-
 #***********************************************************************PARAMETERS for the SCRIPT**************************************************************************
 
 # Should tune parameters according to our experiments. or event vary them, or make them probabilistic (some of them).
