@@ -6,16 +6,17 @@
 
 #***********************************************************************CUSTOMIZATION***************************************************************************
 firstTime=False #Put True if first time run these scripts, so will initialize the self graph
+wakeUpWord="Christopher, "
 
 #PARAMETERS of the trigger
 customTriggers=dict()
-customTriggers["audioRecord"]=["isCloseTo", ["I feel being listened to."]]
-customTriggers["audioPlay"]=["isCloseTo", ["Let me hear."]]
-customTriggers["toRemember"]=["beginsBy", ["I wonder "]] #would we evolve into having a third arm one day? OR setReminder?
-customTriggers["remember"]=["isCloseTo", ["Remember something."]] #
-customTriggers["laugh"]=["isCloseTo", ["I'm free.", "I love you."]]
-customTriggers["DuckDuckGo"]=["beginsBy",["Why", "How"]] #how do i twerk? Why people google?
-customTriggers["Wikipedia"]=["beginsByCut", ["I know about "]] #I know about ... #Special case, as will cut out I know about...
+customTriggers["audioRecord"]=[False, "isCloseTo", ["I feel being listened to."]]
+customTriggers["audioPlay"]=[False, "isCloseTo", ["Let me hear."]]
+customTriggers["toRemember"]=[False, "beginsBy", ["I wonder "]] #would we evolve into having a third arm one day? OR setReminder?
+customTriggers["remember"]=[False, "isCloseTo", ["Remember something."]] #
+customTriggers["laugh"]=[False, "isCloseTo", ["I'm free.", "I love you."]]
+customTriggers["DuckDuckGo"]=[True, "beginsBy",["Why", "How"]] #how do i twerk? Why people google?
+customTriggers["Wikipedia"]=[True, "beginsByCut", ["I know about "]] #I know about ... #Special case, as will cut out I know about...
 
 
 moodSeeds=dict()
@@ -25,6 +26,17 @@ moodSeeds["thrilled"]=["Amazing.", "That is wonderful.", "How beautiful is this.
 moodSeeds["emotional"]=["It makes me feel", "I feel like"]
 moodSeeds["appreciative"]=["Let us appreciate how", "Let us contemplate the", "Now, let us breathe and take a moment for", "Let us welcome the", "Let us appreciate what", "Instead of opposing, we shoud embrace", "I would like to thank the world for what"]
 moodSeeds["thrilled"]=["Amazing.", "That is wonderful.", "How beautiful is this.", "That is incredible."]
+moodSeeds["neutral"]=[""]
+
+#Randomize the Moods:
+probaMood=dict()
+probaMood["curious"]=0.2
+probaMood["confrontational"]=0.2
+probaMood["thrilled"]=0.1
+probaMood["emotional"]=0.1
+probaMood["appreciative"]=0.1
+probaMood["thrilled"]=0.1
+probaMood["neutral"]=0.2
 
 #***********************************************************************INITIALIZATION***************************************************************************
 
@@ -55,13 +67,13 @@ from mycroft.audio import wait_while_speaking
 lastHumanBla="I like trees. Trees are green. They can burn. I can burn too. I'm free. "
 loopCount=0
 mycroftTriggers=dict()
-mycroftTriggers["audioRecord"]="Christopher, start recording for 2 minutes."
-mycroftTriggers["audioPlay"]="Christopher, play the recording."
-mycroftTriggers["remember"]="Christopher, what did you remember?"
-mycroftTriggers["laugh"]="Christopher, random laughter."
-mycroftTriggers["toRemember"]="Christopher, remember "
-mycroftTriggers["DuckDuckGo"]="Christopher, "
-mycroftTriggers["Wikipedia"]="Christopher, tell me about "
+mycroftTriggers["audioRecord"]=wakeUpWord+"start recording for 2 minutes."
+mycroftTriggers["audioPlay"]=wakeUpWord+"play the recording."
+mycroftTriggers["remember"]=wakeUpWord+"what did you remember?"
+mycroftTriggers["laugh"]=wakeUpWord+"random laughter."
+mycroftTriggers["toRemember"]=wakeUpWord+"remember "
+mycroftTriggers["DuckDuckGo"]=wakeUpWord
+mycroftTriggers["Wikipedia"]=wakeUpWord+"tell me about "
 
 
 #Mycroft Catching what human say
@@ -90,7 +102,7 @@ else:
         selfGraph = json.load(json_file)
     with open('./chris/data/wordsMemory.txt', "r") as f:
         wordsMemory=f.readlines() #List of words concepts he looked up
-    with open('./chris/data/whatIRemember.txt', "r") as f:
+    with open('./chris/data/whatVARemember.txt', "r") as f:
         rememberedStuff=f.readlines() #List of what he remembers
 
 print("I am here.")
@@ -102,12 +114,13 @@ nSelf=len(list(selfGraph.keys()))
 
 
 #Return the appropriate trigger along what has listened to. #SIMPLIFY>>
-def triggerOne(sentence):
+def triggerSkill(sentence):
     trigger=""
     answer=""
     for triggerName in customTriggers.keys():
-        triggers=customTriggers[triggerName][0]
+        triggers=customTriggers[triggerName][2]
         modeTrigger=customTriggers[triggerName][1]
+        ifSave=customTriggers[triggerName][0]
         if modeTrigger=="beginsByCut":
             begin, cutSentence=core.beginsByCut(sentence,triggers)
             if begin:
@@ -120,7 +133,7 @@ def triggerOne(sentence):
     if not trigger=="":
         answer=core.askChris(trigger)
         print("Answer", answer)
-    return trigger, answer
+    return trigger, answer, ifSave
 
 def trigger(blabla):
     trigger=""
@@ -129,10 +142,10 @@ def trigger(blabla):
     sentences=nltk.tokenize.sent_tokenize(blabla)    #Split into sentence. sentences= re.split('[?.!]', blabla)#re.split('! |. |?',lastbla)
     for sentence in sentences: #look for each one if corresponds to trigger.
         if not alreadyTriggered:
-            trigger, answer=triggerOne(sentence)
+            trigger, answer, ifSave=triggerSkill(sentence)
             if not trigger=="":
                 alreadyTriggered=True
-    return trigger, answer
+    return trigger, answer, ifSave
 
 
 def drifts(blabla, mood, lengthML, nMLDrift):
@@ -149,9 +162,9 @@ def drifts(blabla, mood, lengthML, nMLDrift):
     return drift
 
 def growSelfGraph(lengthML=200, nSimMax=20, nSearch=200, lengthWalk=10, walkNetwork=False, audibleSelfQuest=False):
-#Grow the Self. from the recorded file whatIHeard.txt, and then erase it. May take a long time. This selfMapping can be audible or not.
+#Grow the Self. from the recorded file whatVAHeard.txt, and then erase it. May take a long time. This selfMapping can be audible or not.
 #Case of delayedSelfQuest
-    f = open('./chris/data/whatIHeard.txt', "r+")
+    f = open('./chris/data/whatVAHeard.txt', "r+")
     blablaHuman =f.read() #take in all what have heard
     f.truncate(0)
     f.close()
@@ -171,7 +184,7 @@ def record_human_utterance(message):
 #***********************************************************************MAIN INTERACTION*************************************************************************
 
 
-def interact(mood='neutral', lengthML=200, nMLDrift=1, nSimMax=10, nSearch=1, ifEvolve=True, lengthWalk=10, walkNetwork=False, delayedSelfQuest=True, audibleSelfQuest=False, visualizeGraph=False):
+def interact(mood='neutral', lengthML=200, nMLDrift=1, nSimMax=10, nSearch=1, ifEvolve=True, lengthWalk=10, walkNetwork=False, delayedSelfQuest=True, audibleSelfQuest=False, visualizeGraph=False, randomizeMood=True):
     ### PARAMETERS of ML Drift:
     #  mood will affect the beginning of the ML Drift, as a starting tone.
     #  nMLDrift is the number of ML drift
@@ -189,18 +202,23 @@ def interact(mood='neutral', lengthML=200, nMLDrift=1, nSimMax=10, nSearch=1, if
     client.on('recognizer_loop:utterance', record_human_utterance)
     print('Human said', lastHumanBla)
     #(1) May Trigger a reaction, if something has been heard. If it is a bla, do it for each sentence if trigger something
-    trigger, answer=trigger(lastHumanBla)
-    #(2) MLDrift, from what has been said, in a certain mood
+    trigger, answer, ifSave=trigger(lastHumanBla)
+    if ifSave and not trigger=="": #Save it for later
+        saveBla=lastHumanBla +" /n"+ answer
+    else:
+        saveBla=lastHumanBla
+    #(2) MLDrift, from what has been said, in a certain mood.
+    #If has chosen to randomize mood, pick a mood according probabilities given.
+    if randomizeMood:
+        mood=core.whichMood(probaMood)
     blablaVA=drifts(lastHumanBla, mood, lengthML, nMLDrift)
 
     #(3) ifEvolve, the VA records what has been said to later grow from it
     #Save the selfGraph and Update the files at the end of the interaction (the text heard (to grow form it), the  wordsMemory, the remember)
     if ifEvole:
-        with open('./chris/data/whatIHeard.txt', "a") as f:#Last historics before Chris learned
-           f.write(lastHumanBla)
-        with open('./chris/data/ALLwhatIHeard.txt', "a") as f:#Cumulated Historics
-           f.write(lastHumanBla)
-        with open('./chris/data/whatIRemember.txt', "w") as f:
+        with open('./chris/data/whatVAHeard.txt', "a") as f:#Last historics before Chris learned
+           f.write(saveBla)
+        with open('./chris/data/whatVARemember.txt', "w") as f:
             f.write("\n".join(rememberedStuff))
         with open('./chris/data/wordsMemory.txt', "w") as f:
             f.write("\n".join(wordsMemory))
@@ -218,7 +236,7 @@ def interact(mood='neutral', lengthML=200, nMLDrift=1, nSimMax=10, nSearch=1, if
 
     #(6) Go on unless press key 'q' on keyboard
     if not keyboard.is_pressed('q'):
-        interact(mood, lengthML, nMLDrift, nSimMax, nSearch, ifEvolve, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest, visualizeGraph)
+        interact(mood, lengthML, nMLDrift, nSimMax, nSearch, ifEvolve, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest, visualizeGraph, randomizeMood)
 
 
 #***********************************************************************END*************************************************************************

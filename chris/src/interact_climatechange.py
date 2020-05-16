@@ -241,13 +241,11 @@ def interactLoop(mood='neutral', lengthML=200, nMLDrift=1, nSimMax, nSearch, ifE
             json.dump(selfGraph, outfile)
             nN=len(selfGraph.keys())
             print("Self has " + str(nN) + " nodes.")
-        with open('/home/christopher/mycroft-core/chris/data/whatIRemember.txt', "w") as f:#renew each time there is an interaction
+        with open('/home/christopher/mycroft-core/chris/data/whatVARemember.txt', "w") as f:#renew each time there is an interaction
             f.write("\n".join(rememberedStuff))
         with open('/home/christopher/mycroft-core/chris/data/wordsMemory.txt', "w") as f:#renew each time there is an interaction
            f.write("\n".join(wordsMemory))
-        with open('/home/christopher/mycroft-core/chris/data/whatIHeard.txt', "a") as f:#renew each time there is an interaction
-           f.write(fullblabla)
-        with open('/home/christopher/mycroft-core/chris/data/ALLwhatIHeard.txt', "a") as f:#cumulated
+        with open('/home/christopher/mycroft-core/chris/data/whatVAHeard.txt', "a") as f:#renew each time there is an interaction
            f.write(fullblabla)
     return blablaVA
 

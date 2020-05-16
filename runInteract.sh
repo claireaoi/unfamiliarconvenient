@@ -17,4 +17,5 @@ python3 ./chris/src/interact.py \
 --walkNetwork=False \
 --delayedSelfQuest=True \
 --audibleSelfQuest=False \
---visualizeGraph=False
+--visualizeGraph=False \
+--randomizeMood=True
