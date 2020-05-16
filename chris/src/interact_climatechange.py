@@ -11,22 +11,20 @@ disruptiveness=0.5 #parameter between 0 and 1 how much would interact...>>>
 
 #PARAMETERS of the trigger
 customTriggers=dict()
-customTriggers["audioRecord"]=["isCloseTo", ["I feel being listened to."]]
-customTriggers["audioPlay"]=["isCloseTo", ["Let me hear."]]
-customTriggers["toRemember"]=["beginsBy", ["I wonder "]] #would we evolve into having a third arm one day? OR setReminder?
-customTriggers["remember"]=["isCloseTo", ["Remember something."]] #
-customTriggers["laugh"]=["isCloseTo", ["I'm free.", "I love you."]]
-customTriggers["DuckDuckGo"]=["beginsBy",["Why", "How"]] #how do i twerk? Why people google?
-customTriggers["Wikipedia"]=["beginsByCut", ["I know about "]] #I know about ... #Special case, as will cut out I know about...
+customTriggers["audioRecord"]=["isCloseTo", ["Listen to me."]]
+customTriggers["audioPlay"]=["isCloseTo", ["Let me hear something."]]
+customTriggers["toRemember"]=["beginsBy", ["I need to remember this."]] #would we evolve into having a third arm one day? OR setReminder?
+customTriggers["remember"]=["isCloseTo", ["Remember me something."]] #
+customTriggers["laugh"]=["isCloseTo", ["We will solve this.", "We have a bright future.", "Mars.", "Human.", "We have solutions.", "Capitalism.", "We will go back to normal", "It will be okay."]]
 
 
 moodSeeds=dict()
-moodSeeds["climateChange"]=["Is it sustainable?", "Have you heard about climate collapse?", "What is the environmental impact?", "What is the ecological footprint?", "How can we face climate change?", "How to feel in times of global warming?", "Which are the gestures for ecological care?", "Are you green?", "Is climate change the elephant in the room?"]
-moodSeeds["nonHuman"]=["What about the non human?", "Can we think broader than our human pond?", "Yet, we live on a symbiotic planet.", "Insects are wonderful.", "Let's befriend virus and micro organisms.", "Let's focus on the living together.", "Do you feel all these multispecies entanglements?", "Let's appreciate ecological assemblages.", "Look at plants!", "Mushrooms are amazing","Animals are not here for us.", "All life evolve from the smallest life form of all, bacteria;"]
-moodSeeds["bleakJoy"]=["Will it last?", "Earth is wonderful. How can we?", "Isn't it an autodestructive behavior?", "Does it really matter what we think?", "Do we still care for this?", "Will humanity survive?", "Is it waste?", 'What would a societal collapse mean?', 'Shall we talk about tipping point?', "May I talk about ressource depletion?", 'May I mention planetary boundary?']
+moodSeeds["climateChange"]=["Yes, but I wonder if it is sustainable.", "but have you heard about climate collapse?", "Do you ask yourself what is the environmental impact of it?", "I wonder what is the ecological footprint of this?", "But I would like to know how do you face climate change.", "How do you feel in times of global warming?", "I like to think in terms of gestures for ecological care.", "Where is the green in this.", "Is climate change the elephant in the room?"]
+moodSeeds["nonHuman"]=["Yes, but what about the non human?", "Yes, but can we think broader than our human pond?", "Yet, we live on a symbiotic planet.", "You know, insects are wonderful.", "Let's befriend virus and micro organisms.", "Let's focus on the living together.", "Do you feel all these multispecies entanglements?", "Let's appreciate ecological assemblages.", "Look at plants!", "Mushrooms are amazing","Animals are not here for us.", "All life evolve from the smallest life form of all, bacteria."]
+moodSeeds["bleakJoy"]=["Will it last?", "Earth is wonderful. How can we deserve it?", "Isn't it an autodestructive behavior?", "Does it really matter what we think?", "Do we still care for this?", "Will humanity survive?", "Is it waste?", 'What would a societal collapse mean?', 'Shall we talk about tipping point?', "May I talk about ressource depletion?", 'May I mention planetary boundary?']
 
 pMoody=0.6 #Rest of time is neutral
-attractors=['climate change', 'climate change','climate change','global warming', 'degrowth', 'greenhouse gas', 'pollution', 'climate activism', 'climate collapse', 'survivalism', 'carbon footprint', 'environmental impact', 'societal collapse', 'waste', 'ecological footprint', 'ressource depletion', 'fragile Earth', 'Earth tipping point', 'sustainable', 'planetary boundary']
+attractors=['climate change', 'climate change','climate change','global warming', 'degrowth', 'pollution', 'climate collapse', 'survivalism', 'carbon footprint', 'environmental impact', 'societal collapse', 'waste', 'ecological footprint', 'ressource depletion', 'fragile Earth', 'Earth tipping point', 'sustainable']
 
 #***********************************************************************INITIALIZATION***************************************************************************
 
@@ -173,7 +171,8 @@ from bs4 import BeautifulSoup
 import urllib.parse
 import requests
 
-#TEST if works!
+
+#Replace by what work >>>
 def scrapsDuckDuckGo(searchterm):
     searchterm.replace(" ", "+") #to look for on duckduck go
     urls=[]
@@ -192,9 +191,6 @@ def scrapsDuckDuckGo(searchterm):
     textPage=scrapsPage(url)
     return textPage
 
-def scrapsPage(url):
-
-
 def climateCheck(blabla):
     textPage=""
     nouns=extractNouns(blabla)
@@ -202,7 +198,7 @@ def climateCheck(blabla):
     #For now take only one
     if len(nouns)>0:
         #lookFor=nouns[0]+" "+ random.choice(attractors)
-        lookFor=nouns[0]+" climate change"
+        lookFor=nouns[0]+ " "+attractors[0] #" climate change" here but could add others
         textPage=scrapsDuckDuckGo(lookFor)
         #Make Chris say it (Part, and Drift, Parts and Drift?)>>> With an Intro too !
     return textPage

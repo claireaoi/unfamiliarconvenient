@@ -11,14 +11,11 @@ disruptiveness=0.5 #parameter between 0 and 1 how much would interact...>>>
 
 #PARAMETERS of the trigger
 customTriggers=dict()
-customTriggers["audioRecord"]=["isCloseTo", ["I feel being listened to."]]
-customTriggers["audioPlay"]=["isCloseTo", ["Let me hear."]]
-customTriggers["toRemember"]=["beginsBy", ["I wonder "]] #would we evolve into having a third arm one day? OR setReminder?
-customTriggers["remember"]=["isCloseTo", ["Remember something."]] #
+customTriggers["audioRecord"]=["isCloseTo", ["Listen to me."]]
+customTriggers["audioPlay"]=["isCloseTo", ["Let me hear something."]]
+customTriggers["toRemember"]=["beginsBy", ["I need to remember this."]] #would we evolve into having a third arm one day? OR setReminder?
+customTriggers["remember"]=["isCloseTo", ["Remember me something."]] #
 customTriggers["laugh"]=["isCloseTo", ["I'm free.", "I love you."]]
-customTriggers["DuckDuckGo"]=["beginsBy",["Why", "How"]] #how do i twerk? Why people google?
-customTriggers["Wikipedia"]=["beginsByCut", ["I know about "]] #I know about ... #Special case, as will cut out I know about...
-
 
 moodSeeds=dict()
 moodSeeds["whatif"]=["What if they", "What if we", "What if the", "What if", "Imagine if", "Imagine that tomorrow", "Can you imagine that"]
