@@ -276,11 +276,18 @@ def isCloseTo(sentence, triggers):
         if not isCloseTo:
             similarity=lev.ratio(sentence.lower(),trigger.lower())
             isCloseTo=(similarity>=0.85)
+    for trigger in triggers: #check with wake up word
+        triggerW= wakeUpWord + trigger#with wakeUpword
+        if not isCloseTo:
+            similarity=lev.ratio(sentence.lower(),triggerW.lower())
+            isCloseTo=(similarity>=0.85)
     return isCloseTo
 
 def beginsBy(sentence, triggers):
     beginsBy=False
     for trigger in triggers:
+        beginsBy=beginsBy or (sentence.lower().startsWith(trigger.lower()))
+        triggerW=wakeUpWord + trigger#with wakeUpword
         beginsBy=beginsBy or (sentence.lower().startsWith(trigger.lower()))
     return beginsBy
 
@@ -292,6 +299,11 @@ def beginsByCut(sentence, triggers):
             beginsBy=(sentence.lower().startsWith(trigger.lower()))
             if beginsBy:
                 cutSentence=sentence.replace(trigger,'')
+            else:#with wakeUpword
+                triggerW=wakeUpWord+trigger
+                beginsBy=(sentence.lower().startsWith(triggerW.lower()))
+                if beginsBy:
+                    cutSentence=sentence.replace(trigger,'')
     return [beginsBy, cutSentence]
 
 #***********************************************************************MAIN PROCEDURES*************************************************************************
