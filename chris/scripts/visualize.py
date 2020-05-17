@@ -49,7 +49,7 @@ import pygraphviz as pgv
 #selfGraph[word][1][nextWord]
 
 def createGraph():
-    with open('/home/christopher/mycroft-core/chris/data/selfgraph.txt') as json_file:
+    with open('./chris/data/selfgraph.txt') as json_file:
         selfGraph = json.load(json_file)
     #Create graph, network entity with networkx
     G = nx.Graph()

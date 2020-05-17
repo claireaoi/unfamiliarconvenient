@@ -25,7 +25,7 @@ memory=[]
 #Here, words are extracted from the Chris & roomba manuals. Could update this, and in this case relaunch the procedures
 #They are written on the file wiki.txt
 #(0) Read starting text corresponding to Chris and Roomba.
-with open('./chris/data/seedChris.txt') as f:
+with open('./chris/data/hatchVA.txt') as f:
    rawChris= ''.join(f.readlines()) #Text with list words
 #(1) Extract wikipedia-ble words from these texts and put them in a waiting List, and start a selfGraph which is a dictionnary in Python
 #For now, only with Wikipedia. Could add wiktionary and DuckDuck Go >

@@ -6,16 +6,13 @@ source .venv/bin/activate #enter the Mycroft virtual environment to use msm skil
 export PYTHONIOENCODING=UTF-8
 
 #To launch an interaction
-python3 ./chris/src/interact.py \
---mood='neutral'\
---lengthML=200 \
---nMLDrift=1 \
---nSimMax=10 \
---nSearch=1 \
---ifEvolve=True \
---lengthWalk=10\
+python3 ./chris/scripts/selfQuest.py \
+--firstTime=False \
+--nDrift=0 \
+--lengthML=100 \
+--nSimMax=50 \
+--nSearch=100 \
+--lengthWalk=10 \
 --walkNetwork=False \
---delayedSelfQuest=True \
 --audibleSelfQuest=False \
---visualizeGraph=False \
---randomizeMood=True
+--visualizeGraph=True

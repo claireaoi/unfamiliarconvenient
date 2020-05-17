@@ -5,7 +5,6 @@
 
 
 #***********************************************************************CUSTOMIZATION***************************************************************************
-firstTime=False #Put True if first time run these scripts, so will initialize the self graph
 wakeUpWord="Christopher, "
 
 #PARAMETERS of the trigger
@@ -52,10 +51,9 @@ import urllib.request
 from nltk import word_tokenize, sent_tokenize, pos_tag
 import keyboard  # using module keyboard
 
-###IMPORT scripts
+###IMPORT other scripts
 import core #Main script, with the different procedures
 import visualize as vis #to visualize the selfGraph
-
 #Import for Mycroft
 import os.path
 from os import path
@@ -63,9 +61,6 @@ from mycroft_bus_client import MessageBusClient, Message
 from mycroft.audio import wait_while_speaking
 
 ###PARAMETERS
-#Do not modify
-lastHumanBla="I like trees. Trees are green. They can burn. I can burn too. I'm free. "
-loopCount=0
 mycroftTriggers=dict()
 mycroftTriggers["audioRecord"]=wakeUpWord+"start recording for 2 minutes."
 mycroftTriggers["audioPlay"]=wakeUpWord+"play the recording."
@@ -75,8 +70,11 @@ mycroftTriggers["toRemember"]=wakeUpWord+"remember "
 mycroftTriggers["DuckDuckGo"]=wakeUpWord
 mycroftTriggers["Wikipedia"]=wakeUpWord+"tell me about "
 
+lastHumanBla="I like trees. Trees are green. They can burn. I can burn too. I'm free. "
 
-#Mycroft Catching what human say
+#***********************************************************************PRELIMINARIES*************************************************************************
+
+#Mycroft init
 print('Setting up client to connect to a local mycroft instance. ')
 client = MessageBusClient()
 print('Conversation may start.')
@@ -84,36 +82,9 @@ client.on('recognizer_loop:utterance', record_human_utterance)
 wait_while_speaking() #wait for Mycroft to finish speaking. Useless now, but will be helpful later
 client.run_forever()
 
-#***********************************************************************PRELIMINARIES*************************************************************************
-
-##STEP 0: Load the self Graph, his words Memory and what he remembers.
-####selfGraph is a dictionnary, whose keys are concepts, and values are couple (weight, neighbors).
-if firstTime:
-    print("Hatching self in process...")
-    execfile('./chris/src/initGraph.py')
-    with open('./chris/data/selfbirth.txt') as json_file:
-        selfGraph = json.load(json_file)
-        wordsMemory=list(selfGraph.keys()) #The memory of the VA is the words he has looked for on wikipedia.
-        wo=wordsMemory[0]#To remember where is last element added
-        wordsMemory[0]=str(len(wordsMemory))
-        wordsMemory[0].append(wo)
-else:
-    with open('./chris/data/selfgraph.txt') as json_file:
-        selfGraph = json.load(json_file)
-    with open('./chris/data/wordsMemory.txt', "r") as f:
-        wordsMemory=f.readlines() #List of words concepts he looked up
-    with open('./chris/data/whatVARemember.txt', "r") as f:
-        rememberedStuff=f.readlines() #List of what he remembers
-
-print("I am here.")
-print("I am made of:", list(selfGraph.keys()))
-nSelf=len(list(selfGraph.keys()))
-
-
 #***********************************************************************PROCEDURES*************************************************************************
 
-
-#Return the appropriate trigger along what has listened to. #SIMPLIFY>>
+#Return the appropriate trigger along what has listened to.
 def triggerSkill(sentence):
     trigger=""
     answer=""
@@ -161,22 +132,11 @@ def drifts(blabla, mood, lengthML, nMLDrift):
         drift+=drifts(drift, mood, lengthML, nMLDrift-1)
     return drift
 
-def growSelfGraph(lengthML=200, nSimMax=20, nSearch=200, lengthWalk=10, walkNetwork=False, audibleSelfQuest=False):
-#Grow the Self. from the recorded file whatVAHeard.txt, and then erase it. May take a long time. This selfMapping can be audible or not.
-#Case of delayedSelfQuest
-    f = open('./chris/data/whatVAHeard.txt', "r+")
-    blablaHuman =f.read() #take in all what have heard
-    f.truncate(0)
-    f.close()
-    selfGraph, wordsMemory, addedWords, blablaQuest=core.selfMapLoops(selfGraph, blablaHuman, 1, 0, lengthML, nSimMax, wordsMemory, nSearch, lengthWalk, walkNetwork, True, audibleSelfQuest)
-    print(addedWords)
-    return addedWords, blablaQuest
-
 
 #Record the utterance of the Human
 def record_human_utterance(message):
     said = str(message.data.get('utterances')[0])
-    print(f'Human said "{said}"')
+    print(f'Human said "{said}"')#is the f normal????
     lastHumanBla=said #record it in global variable
     #with open('learnings.txt', 'a+') as t: #
         #t.write(said + ' ')
@@ -184,59 +144,57 @@ def record_human_utterance(message):
 #***********************************************************************MAIN INTERACTION*************************************************************************
 
 
-def interact(mood='neutral', lengthML=200, nMLDrift=1, nSimMax=10, nSearch=1, ifEvolve=True, lengthWalk=10, walkNetwork=False, delayedSelfQuest=True, audibleSelfQuest=False, visualizeGraph=False, randomizeMood=True):
-    ### PARAMETERS of ML Drift:
-    #  mood will affect the beginning of the ML Drift, as a starting tone.
-    #  nMLDrift is the number of ML drift
-    #  lengthMLDrift is the default number of character of the ML Drift
-    ### PARAMETERS of the Self Quest:
-    # nSearch is the number of words he will loop for in wikipedia
-    # nSimMax is the maximum number of words he will test for similarities
-    # delayedSelfQuest=True: by default the selfQuest is not happening in the same time than the interaction (as it slows down the process a lot) but only if specified explicitly
-    # audibleSelfQuest determine if the Self Quest would be audible (in case is not delayed)
-    #  ifEvolve means the interaction is recorded, and Chris will grow it self from it, also ML will be trained on it. Else, can freeze the VA
-    # walkNetwork is a boolean determining if the VA does a walk on the network after each found word, while lengthWalk is the length of this walk.
-    loopCount++
-    #(0) CATCH what Human say
+def interactLoop(loopCount, selfGraph, wordsMemory, rememberedStuff, mood='neutral', lengthML=200, nMLDrift=1, ifEvolve=True, randomizeMood=True):
     print('Interaction n°', loopCount)
+    #(0) Catch what the human is saying
     client.on('recognizer_loop:utterance', record_human_utterance)
-    print('Human said', lastHumanBla)
+    print('Human said', humanBla)
+
     #(1) May Trigger a reaction, if something has been heard. If it is a bla, do it for each sentence if trigger something
-    trigger, answer, ifSave=trigger(lastHumanBla)
-    if ifSave and not trigger=="": #Save it for later
-        saveBla=lastHumanBla +" /n"+ answer
+    trigger, answer, ifSave=trigger(humanBla)
+    #For some skills, may save what VA has said for the evolution.
+    if ifSave and not trigger=="":
+        savedBla=humanBla +" /n"+ answer
     else:
-        saveBla=lastHumanBla
+        savedBla=humanBla
+
     #(2) MLDrift, from what has been said, in a certain mood.
     #If has chosen to randomize mood, pick a mood according probabilities given.
     if randomizeMood:
         mood=core.whichMood(probaMood)
-    blablaVA=drifts(lastHumanBla, mood, lengthML, nMLDrift)
+    blablaVA=drifts(humanBla, mood, lengthML, nMLDrift)
 
     #(3) ifEvolve, the VA records what has been said to later grow from it
     #Save the selfGraph and Update the files at the end of the interaction (the text heard (to grow form it), the  wordsMemory, the remember)
     if ifEvole:
         with open('./chris/data/whatVAHeard.txt', "a") as f:#Last historics before Chris learned
-           f.write(saveBla)
+           f.write(savedBla)
         with open('./chris/data/whatVARemember.txt', "w") as f:
             f.write("\n".join(rememberedStuff))
         with open('./chris/data/wordsMemory.txt', "w") as f:
             f.write("\n".join(wordsMemory))
-    return blablaVA
-        #(4) If Self Quest: Check some words heard on wikipedia, and grow his SelfGraph. Even though may be slow
-        if not delayedSelfQuest:
-            selfGraph, wordsMemory, addedWords, blablaQuest=core.selfMapLoops(selfGraph, lastHumanBla, 1, 1, lengthML, nSimMax,  wordsMemory, nSearch, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest)
-            with open('./chris/data/selfgraph.txt', 'w') as outfile:
-                json.dump(selfGraph, outfile)
-                nN=len(selfGraph.keys())
-                print("Self has " + str(nN) + " nodes.")
-    #(5) Visualise graph if specified.
+
+    return savedBla
+
+
+def interact(mood='neutral', lengthML=200, nMLDrift=1, ifEvolve=True, randomizeMood=True, visualizeGraph=False):
+    loopCount=0
+    savedBla=""
+    #Load what VA remembered stuff.
+    with open('./chris/data/whatVARemember.txt', "r") as f:
+        rememberedStuff=f.readlines() #List of what he remembers
+
+    #Interact until press key 'q' on keyboard:
+    while not keyboard.is_pressed('q'):
+        loopCount++
+        savedBla+=interactLoop(loopCount, selfGraph, wordsMemory, rememberedStuff, mood, lengthML, nMLDrift, ifEvolve, randomizeMood)
+
+    print('Human ended interaction.')
+
+    #Visualise graph if specified.
     if visualizeGraph:
         vis.drawGraph()
-
-    #(6) Go on unless press key 'q' on keyboard
-    if not keyboard.is_pressed('q'):
-        interact(mood, lengthML, nMLDrift, nSimMax, nSearch, ifEvolve, lengthWalk, walkNetwork, delayedSelfQuest, audibleSelfQuest, visualizeGraph, randomizeMood)
+    return savedBla
 
 
 #***********************************************************************END*************************************************************************
