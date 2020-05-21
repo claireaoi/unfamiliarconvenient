@@ -60,7 +60,7 @@ print('Setting up client to connect to a local mycroft instance')
 # Initialize machine learning
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 model = GPT2LMHeadModel.from_pretrained("../models/gpt-2")
-
+#model=GPT2LMHead.fromPretrained(path), if you replace path with simply 'gpt2', it will download the baseline gpt2 model automatically
 #***********************************************************************PROCEDURES for ML Drift*************************************************************************
 
 
@@ -72,7 +72,7 @@ def whichMood(pMood):
 def MLDrift(seedSentence, lengthML): #lenghtML=100
 #One ML Drift with GPT2, seeded with a string. Printed and said by Chris.
     process = tokenizer.encode(seedSentence, return_tensors = "pt")
-    generator = model.generate(process, max_lenght = lenghtML, tempearature = 1.0, repetition_penalty = 2)
+    generator = model.generate(process, max_length = lengthML, temperature = 1.0, repetition_penalty = 2)
     drift = tokenizer.decode(generator.tolist()[0])
     #drift= cs.cond_model(model_name='124M',seed=None, nsamples=2, batch_size=1,length=lengthML,temperature=1.0,top_k=0,top_p=1, models_dir='./chris/models', blabla = seedSentence)
     drift, fuckedUp=cleanText(drift)
@@ -80,9 +80,9 @@ def MLDrift(seedSentence, lengthML): #lenghtML=100
     while fuckedUp>maxFuckedUp:
         print("Fucked Up ML. Try again.")
         process = tokenizer.encode(seedSentence, return_tensors = "pt")
-        generator = model.generate(process, max_lenght = lenghtML, tempearature = 1.0, repetition_penalty = 2)
+        generator = model.generate(process, max_length = lengthML, temperature = 1.0, repetition_penalty = 2)
         drift = tokenizer.decode(generator.tolist()[0])
-        #drift= cs.cond_model(model_name='124M',seed=None, nsamples=1, batch_size=1,length=lengthML,temperature=1.0,top_k=0,top_p=1, models_dir='./models', blabla = seedSentence)
+        #drift= cs.cond_model(model_name='124M',seed=None, nsamples=1, batch_size=1,length=lengthML,perature=1.0,top_k=0,top_p=1, models_dir='./models', blabla = seedSentence)
         drift, fuckedUp=cleanText(drift)
     client.emit(Message('speak', data={'utterance': drift})) #does it say this or just will answer?
     print(drift)

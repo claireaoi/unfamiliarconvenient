@@ -13,14 +13,6 @@ excluded=['a', 'the', 'an', 'I', 'to', 'are', 'not', 'for', 'best','you', 'they'
 
 lemmatizer = WordNetLemmatizer()
 
-# Extract words from text and check if they are on Wikipedia. For a word, use Lemmatizer to avoid same root of the word
-# CF https://www.machinelearningplus.com/nlp/lemmatization-examples-python/
-# When checking if the word is on wikipedia, should check if the root is the same than another element (stem)
-# and in this case, not add i
-# For now, also exclude if word contains numbers
-# https://pypi.org/project/Wikipedia-API/ check API
-
-
 def hasNumbers(inputString):
     return any(char.isdigit() for char in inputString)
 
@@ -62,9 +54,6 @@ def extract(blabla, graph, memory,  nbWord):
                         else: #Add word !
                             OKWikipedia.append(word)
                             counter+=1
-        #FOR WIKTIONARY, should CHECK BETTER if the word exists, take more verbs etc. Also check if the word is rare
-            #if not word is None and len(word)>1 and not hasNumbers(word) and (pos == 'NN' or pos == 'NNS' or pos=='JJ' or pos=='VBP'):
-            #if not word in OKWiktionary and not word in graph.keys() and not word.lower() in graph.keys() and not word.lower() in memory:#up to capital:
             #OKWiktionary.append(word)
             #DUO WORDS for wikipedia:
             #For Duo Word (ADJ + Noun, or Noun + Noun or... second is a noun)

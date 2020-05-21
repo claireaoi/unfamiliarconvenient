@@ -16,4 +16,4 @@ python3 selfQuest.py \
 --lengthML=100 \
 --nSimMax=50 \
 --nSearch=100 \
---lengthWalk=10 
+--lengthWalk=10

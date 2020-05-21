@@ -7,7 +7,7 @@
 #***********************************************************************CUSTOMIZATION***************************************************************************
 wakeUpWord="Christopher, "
 
-#PARAMETERS of the trigger
+#PARAMETERS of the trigger: LOOK at VOCAB files of the skills, and modify.>>>VOCAB???
 customTriggers=dict()
 customTriggers["audioRecord"]=[False, "isCloseTo", ["I feel being listened to."]]
 customTriggers["audioPlay"]=[False, "isCloseTo", ["Let me hear."]]

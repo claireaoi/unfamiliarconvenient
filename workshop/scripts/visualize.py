@@ -39,6 +39,7 @@ import networkx as nx #networkx need install the library: pip install networkx
 import pylab as plt
 from networkx.drawing.nx_agraph import graphviz_layout, to_agraph
 import pygraphviz as pgv
+from PIL import Image
 
 ##STEP 0: Load the self Graph
 ####selfGraph is a dictionnary, whose keys are concepts, and values are couple (weight, neighbors).
@@ -49,7 +50,7 @@ import pygraphviz as pgv
 #selfGraph[word][1][nextWord]
 
 def createGraph():
-    with open('./chris/data/selfgraph.txt') as json_file:
+    with open('../data/selfgraph.txt') as json_file:
         selfGraph = json.load(json_file)
     #Create graph, network entity with networkx
     G = nx.Graph()
@@ -78,7 +79,7 @@ def createGraph():
     print('Self Density:', nx.density(G))
     print('Is Self Connected :', nx.is_connected(G))
     components = nx.connected_components(G)
-    print('Number of Connected component of Self :', number_connected_components(G))
+    print('Number of Connected component of Self :', nx.number_connected_components(G))
     largest_component = max(components, key=len)
     subSelf = G.subgraph(largest_component) # Create a "subgraph" of just the largest component
     diameter = nx.diameter(subSelf)
@@ -104,7 +105,7 @@ def createGraph():
     print("Top 3 Central Concepts in Self:")
     for b in sorted_betweenness[:3]:
         print(b)
-    #Community detection within Self: with modularity, different cluster >>Clustered Self
+    #Community detection within Self: with modularity, different cluster >>Clustered Self>>>
 
     return G
 
@@ -116,4 +117,10 @@ def drawGraph():
     #Rendering via Graphviz. >>Draw Attributes!
     A.layout('dot')
     #Saving
-    A.draw('selfGraph.png')
+    A.draw('../data/selfGraph.png')
+    #Show Image
+    img=Image.open('../data/selfGraph.png')
+    img.show()
+
+#if __name__ == '__main__':
+#    fire.Fire(drawGraph)
