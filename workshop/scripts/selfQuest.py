@@ -3,6 +3,7 @@
 #***********************************************************************INITIALIZATION***************************************************************************
 ###IMPORT Library
 import fire
+import json
 
 ###IMPORT scripts
 import core #Main script, with the different procedures
@@ -12,21 +13,25 @@ import visualize as vis #to visualize the selfGraph
 
 def loadSelf(firstTime):
     if firstTime:
+        print("opening initGraph")
+        exec(open('./initGraph.py').read())
+
         print("Hatching self in process...")
-        execfile('./chris/scripts/initGraph.py')
-        with open('./chris/data/selfbirth.txt') as json_file:
+        with open('../data/selfbirth.txt') as json_file:
             selfGraph = json.load(json_file)
-            wordsMemory=list(selfGraph.keys()) #The memory of the VA is the words he has looked for on wikipedia.
-            wo=wordsMemory[0]#To remember where is last element added
-            wordsMemory[0]=str(len(wordsMemory))
+            #selfGraph = json_file.readlines()
+            wordsMemory=list(selfGraph.keys()) #The memory of the VA is the words it has looked for on wikipedia.
+            wo=wordsMemory[0]#To remember where is oldest word
+            wordsMemory[0] = str(len(wordsMemory))
             wordsMemory.append(wo)
         blabla=[]
     else:
-        with open('./chris/data/selfgraph.txt') as json_file:
-            selfGraph = json.load(json_file)
-        with open('./chris/data/wordsMemory.txt', "r") as f:
+        with open('../data/selfgraph.txt') as json_file:
+            #selfGraph = json.load(json_file)
+            selfGraph = eval(json_file.read())
+        with open('../data/wordsMemory.txt', "r") as f:
             wordsMemory=f.readlines() #List of words concepts he looked up
-        with open('./chris/data/whatIHeard.txt', "r") as f:#Last historics before Chris learned
+        with open('../data/whatVAHeard.txt', "r") as f:#Last historics before Chris learned
             blabla=f.readlines()
 
     print("I am here. Self Quest can begin.")
@@ -34,7 +39,7 @@ def loadSelf(firstTime):
     nSelf=len(list(selfGraph.keys()))
     return selfGraph, wordsMemory, blabla
 
-def selfQuest(firstTime, nDrift, lengthML, nSimMax, nSearch, lengthWalk, walkNetwork, audibleSelfQuest, ifVisualize):
+def selfQuest(firstTime=False, walkNetwork=False, audibleSelfQuest=False, visualizeGraph=True, nDrift=0, lengthML=100, nSimMax=50, nSearch=100, lengthWalk=10): #ifVisualize
     #(0) Load SELF, memory, rememberedStuff and blabla
     ####selfGraph is a dictionnary, whose keys are concepts, and values are couple (weight, neighbors).
     selfGraph, wordsMemory, blabla=loadSelf(firstTime)
@@ -43,12 +48,12 @@ def selfQuest(firstTime, nDrift, lengthML, nSimMax, nSearch, lengthWalk, walkNet
     selfGraph, wordsMemory, addedWords, blablaQuest=core.selfMapLoops(selfGraph, blabla, 1, nDrift, lengthML, nSimMax,  wordsMemory, nSearch, lengthWalk, walkNetwork, True, audibleSelfQuest)
 
     #(2) Save the selfGraph, Update the memory
-    with open('./chris/data/selfgraph.txt', 'w') as outfile:
+    with open('../data/selfgraph.txt', 'w') as outfile:
         json.dump(selfGraph, outfile)
         nN=len(selfGraph.keys())
         print("Self has " + str(nN) + " nodes.")
         print("I am made of:", list(selfGraph.keys()))
-    with open('./chris/data/wordsMemory.txt', "w") as f:
+    with open('../data/wordsMemory.txt', "w") as f:
         f.write("\n".join(wordsMemory))
     #(3) Visualize if want
     if ifVisualize:

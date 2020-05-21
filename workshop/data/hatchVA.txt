@@ -1,0 +1,21 @@
+Who is Mycroft?
+AI FOR EVERYONE
+Mycroft is the world’s first open source voice assistant. It can run anywhere – on a desktop computer, inside an automobile, it even runs on a Raspberry Pi. It is open so it can be remixed, extended, improved. It can be used in anything from a science project to an enterprise software application.
+What Can Mycroft do?
+I can help you get stuff done, seamlessly, without looking for the right button to push. Just use your voice to tell me how I can assist you.
+
+Mycroft is primarily software. What you see in the video is our reference device Mark 1.
+
+Why open source?
+We believe the future of AI should be open, not a cryptic black box only few understand and have control over.
+Building this new technology together, collaborating, sharing ideas and building on top of each other – that’s how we see it.
+
+
+Mycroft is the name of a suite of software and hardware tools that use natural language processing and machine learning to provide an open source voice assistant.
+Mycroft components
+
+Mycroft is modular. Some components can be easily 'swapped out' for others:
+Wake Word detection Speech to Text (STT) Intent parser 
+Mycroft Skills
+Mycroft Skills are like 'add-ons' or 'plugins' that provide additional functionality. Skills can be developed by Mycroft developers, or by Community developers, and vary in their functionality and maturity.
+Mycroft Skills Management (msm) is a set of helper scripts that assist in the installation and management of Skills.

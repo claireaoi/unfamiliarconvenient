@@ -1,6 +1,7 @@
 
 
 #***********************************************************************PARAMETERS for the SCRIPT**************************************************************************
+
 # Should tune parameters according to our experiments. or event vary them, or make them probabilistic (some of them).
 #>>>>CHANGE and parameters separate? put them in interact ??? HAS TO TEST! lengthML, selfAwareness sentence can change too>>>
 thresholdSim=0.6 #threshold when Consider 2 concepts as similar
@@ -13,6 +14,15 @@ wakeUpWord="Christopher, "
 #***********************************************************************INITIALIZATION***************************************************************************
 
 ###IMPORT general
+import nltk #For NLP
+nltk.download('wordnet')
+nltk.download('wordnet_ic')
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+
+from nltk.corpus import words, wordnet
+from nltk.stem.wordnet import WordNetLemmatizer
+
 import fire
 import numpy as np
 import re
@@ -21,17 +31,20 @@ import json
 import string
 import time
 import Levenshtein as lev
-import nltk #For NLP
-from nltk.corpus import words, wordnet
-from nltk.stem.wordnet import WordNetLemmatizer
 import urllib.request
 from nltk import word_tokenize, sent_tokenize, pos_tag
 from sematch.semantic.similarity import WordNetSimilarity #To check Word Similarity
+
 wns = WordNetSimilarity()
 
 #IMPORT other scripts
 import wiki #for wikipedia self Mapping
-import conditional_samples as cs #to run the ML script
+
+# import conditional_samples as cs #to run the ML script
+import transformers
+import torch
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
+
 import visualize as vis #to visualize the selfGraph
 
 ###MYCROFT. MessageBus will enable us to control Mycroft through this script (trigger skills, etc.)
@@ -39,10 +52,14 @@ from mycroft_bus_client import MessageBusClient, Message
 ###The Message object is a representation of the messagebus message, this will always contain a message type but can also contain data and context.
 ####Message('MESSAGE_TYPE', data={'meaning': 42}, context={'origin': 'A.Dent'})
 #The MycroftBusClient() object can be setup to connect to any host and port as well as any endpont on that host. #If no arguments are provided it will try to connect to a local instance of mycroftr core on the default endpoint and port.
+
+client = MessageBusClient()
 client.run_in_thread()
 print('Setting up client to connect to a local mycroft instance')
-client = MessageBusClient()
 
+# Initialize machine learning
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+model = GPT2LMHeadModel.from_pretrained("../models/gpt-2")
 
 #***********************************************************************PROCEDURES for ML Drift*************************************************************************
 
@@ -52,14 +69,20 @@ def whichMood(pMood):
     pickMood=random.choices(population=list(pMood.keys()), weights=list(pMood.values()), k=1) #list
     return pickMood[0]
 
-def MLDrift(seedSentence, lengthML=100):
+def MLDrift(seedSentence, lengthML): #lenghtML=100
 #One ML Drift with GPT2, seeded with a string. Printed and said by Chris.
-    drift= cs.cond_model(model_name='124M',seed=None, nsamples=2, batch_size=1,length=lengthML,temperature=1.0,top_k=0,top_p=1, models_dir='./chris/models', blabla = seedSentence)
+    process = tokenizer.encode(seedSentence, return_tensors = "pt")
+    generator = model.generate(process, max_lenght = lenghtML, tempearature = 1.0, repetition_penalty = 2)
+    drift = tokenizer.decode(generator.tolist()[0])
+    #drift= cs.cond_model(model_name='124M',seed=None, nsamples=2, batch_size=1,length=lengthML,temperature=1.0,top_k=0,top_p=1, models_dir='./chris/models', blabla = seedSentence)
     drift, fuckedUp=cleanText(drift)
     print(drift)
     while fuckedUp>maxFuckedUp:
         print("Fucked Up ML. Try again.")
-        drift= cs.cond_model(model_name='124M',seed=None, nsamples=1, batch_size=1,length=lengthML,temperature=1.0,top_k=0,top_p=1, models_dir='./chris/models', blabla = seedSentence)
+        process = tokenizer.encode(seedSentence, return_tensors = "pt")
+        generator = model.generate(process, max_lenght = lenghtML, tempearature = 1.0, repetition_penalty = 2)
+        drift = tokenizer.decode(generator.tolist()[0])
+        #drift= cs.cond_model(model_name='124M',seed=None, nsamples=1, batch_size=1,length=lengthML,temperature=1.0,top_k=0,top_p=1, models_dir='./models', blabla = seedSentence)
         drift, fuckedUp=cleanText(drift)
     client.emit(Message('speak', data={'utterance': drift})) #does it say this or just will answer?
     print(drift)
@@ -165,7 +188,7 @@ def wonder(word):
     return phrase
 
 #A wikipedia Loop to grow his awareness of self, with possibly MLDrift, and the option for it to be audible or not.
-def selfMapping(selfGraph, word, memory, nDrift=1, lengthML=200, nSimMax=5, lengthWalk=10, walkNetwork=False, audibleSelfQuest=False):
+def selfMapping(selfGraph, word, memory, nDrift=1, lengthML=100, nSimMax=5, lengthWalk=10, walkNetwork=False, audibleSelfQuest=False):
     ###(1) Ask Chris about a work on wikipedia
     if audibleSelfQuest:
             question=wakeUpWord+ "tell me about " + word +"." #For Chris
@@ -178,7 +201,7 @@ def selfMapping(selfGraph, word, memory, nDrift=1, lengthML=200, nSimMax=5, leng
         nDrift=0
     ###(2) Possible ML Drifts from the last sentence, case where audibleSElf Quest
     if nDrift>0:
-        drift=MLDrifts(answer, nDrift, lengthML)
+        drift=MLDrifts(answer, nDrift, lengthML) #lengthML=100
     ##(3) Self Awareness Quest: look if this word is related to Self
     selfGraph, ifadded, simWord, simScore=isSelf(word, nSimMax)
     nSelf=len(list(selfGraph.keys()))
@@ -207,13 +230,13 @@ def selfMapping(selfGraph, word, memory, nDrift=1, lengthML=200, nSimMax=5, leng
         memory[0]=str(int(memory[0])+1) #in 0 element keep track
     return selfGraph, memory, answer, drift, ifadded
 
-def selfMapLoops(selfGraph, blabla, nLoop, nDrift, lengthML, nSimMax, memory, nSearch, lengthWalk=10, walkNetwork=False, delayedSelfQuest=True, audibleSelfQuest=False):
+def selfMapLoops(selfGraph, blabla, nLoop, nDrift, lengthML, nSimMax, wordsMemory, nSearch, lengthWalk=10, walkNetwork=False, delayedSelfQuest=True, audibleSelfQuest=False):
     #nDrift, nLoop and nDrift can be 0. nLoop 0 or not audible selfQuest should imply nDrift 0
     if nLoop==0 or not audibleSelfQuest:
         nDrift=0
         nLoop=0
     #(0) Look at words for which exist wikipedia Page and not in selfGraph nor in memory. nSearch  is the Nb word max will look for in Wikipedia
-    OKWikipedia,OKWiktionary,selfGraph=wiki.extract(blabla, selfGraph, memory, nSearch)#actually real nSearch may double because of composed words.
+    OKWikipedia,OKWiktionary,selfGraph=wiki.extract(blabla, selfGraph, wordsMmemory, nSearch)#actually real nSearch may double because of composed words.
     answer=""
     drift=""
     blabla=""
@@ -319,7 +342,7 @@ def askChris(question):
 
 def saveGraph():
     # Save selfGraph into file selfgraph.txt. Print number vertices
-    with open('./chris/data/selfgraph.txt', 'w') as outfile:
+    with open('./data/selfgraph.txt', 'w') as outfile:
         json.dump(selfGraph, outfile)
         nN=len(selfGraph.keys())
         print("Self has " + str(nN) + " nodes.")

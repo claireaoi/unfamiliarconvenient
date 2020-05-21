@@ -165,7 +165,7 @@ def interactLoop(loopCount, rememberedStuff, mood='neutral', lengthML=200, nMLDr
     blablaVA=drifts(humanBla, mood, lengthML, nMLDrift)
 
     #(3) ifEvolve, the VA records what has been said to later grow from it
-    #Save the selfGraph and Update the files at the end of the interaction (the text heard (to grow form it),the remember)
+    #Save the selfGraph and Update the files at the end of the interaction (the text heard (to grow form it), the  wordsMemory, the remember)
     if ifEvole:
         with open('./chris/data/whatVAHeard.txt', "a") as f:#Last historics before Chris learned
            f.write(savedBla)
