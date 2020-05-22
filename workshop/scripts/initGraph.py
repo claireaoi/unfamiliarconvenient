@@ -82,7 +82,7 @@ chrisWikipedia,chrisWiktionary,VoidGraph=wiki.extract(rawChris, dict(), memory, 
 #Record this in a text file
 fileW = open("../data/wiki.txt","w")
 print('writing wiki files')
-fileW.writelines(elt + "\n" for elt in chrisWikipedia) #Ok different lines ? and this ?
+fileW.writelines(elt + "\n" for elt in chrisWikipedia)
 fileW.close()
 
 ### STEP 2: Initialize the selfGraph
@@ -113,8 +113,6 @@ mesh=(nEdge-nNode+1) / (2*nNode-5)
 
 print("Self is now a Graph!")
 print("My Meshedness coefficient is:", round(mesh,3))
-#print("My Clustering coefficient is:")
-#print("My Algebraic Connectivity Coefficient is:")
 
 #STEP 4: SAVE it in a file selfbirth.txt.
 with open('../data/selfbirth.txt', 'w') as outfile:
