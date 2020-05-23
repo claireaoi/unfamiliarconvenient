@@ -188,17 +188,14 @@ def hatchSelf(nSearch):
     for key in selfGraph.keys(): #[weight, neighbors]
         selfGraph[key]= [startingWeight, dict()]
 
-    nNode=len(selfGraph.keys())
+    nNode=len(list(selfGraph.keys()))
     print("Self is Born. It is not yet associative.")
     print("Initial Concepts within Self:" + ', '.join(selfConcepts))
 
     ##(3) Build the connections within the Self: the edges of the Graph, from semantic similarity.
     #This step may take time, according the length of the list.
     nEdge=connectNodes(selfGraph)
-    mesh=(nEdge-nNode+1) / (2*nNode-5)
-    print("Self is now a Graph!")
-    print("My Meshedness coefficient is:", round(mesh,3))
-
+    
     #(4) Save it, in both selfbirth.txt and selfgraph.txtm to keep always initial graph in memory.
     with open('./workshop/data/selfbirth.txt', 'w') as outfile:
         json.dump(selfGraph, outfile)
@@ -211,8 +208,11 @@ def hatchSelf(nSearch):
     wo=wordsMemory[0]#To remember where is oldest word
     wordsMemory[0] = str(len(wordsMemory))
     wordsMemory.append(wo)
+    
+    mesh=(nEdge-nNode+1) / (2*nNode-5)
+    description="Self is born. Self is a network with {} concepts and {} connections. My meshedness coefficient is {} .".format(nNode, nEdge, round(mesh,3))
 
-    return selfGraph, wordsMemory
+    return selfGraph, wordsMemory, description
 
 
 #***********************************************************************PROCEDURES to GROW SELF***************************************************************************
@@ -278,24 +278,24 @@ def createGraph(selfGraph):
     #(4) Add Attributes Edges. Dont need for now, as already added the weight in the edges. But could add other attributes here.
     #nx.set_edge_attributes(G, weightEdge, 'relatedness')
 
-    #(5) Displaz properties related to self Graph
-    print(nx.info(G))
-    print('Density of Self:', nx.density(G))
-    print('Is Self Connected :', nx.is_connected(G))
+    #(5) Look at properties related to self Graph
+    descriptionSelf=nx.info(G) + "\n" 
+    descriptionSelf+='Density of Self: {}'.format(nx.density(G)) + "\n" 
+    descriptionSelf+='Am I connected Connected? '+ str(nx.is_connected(G)) + "\n" 
     components = nx.connected_components(G)
-    print('Number of Connected component of Self :', nx.number_connected_components(G))
+    descriptionSelf+='I have {} connected components'.format(nx.number_connected_components(G)) + "\n" 
     largest_component = max(components, key=len)
     subSelf = G.subgraph(largest_component) # Create a "subgraph" of just the largest component
     diameter = nx.diameter(subSelf)
-    print('Diameter of largest Connected Component of Self :', diameter)
+    descriptionSelf+='The diameter of my largest Connected Component is:'+ str(diameter)  + "\n" 
     #Transitivity, like density, expresses how interconnected a graph is in terms of a ratio of actual over possible connections. 
-    #Transitivity is the ratio of all triangles over all possible triangles.
-    print("Transivity of Self:", nx.transitivity(G))
+    #Transitivity is the ratio of all triangles over all possible triangles. 
+    descriptionSelf+="My transitivity coefficient is"+ str(nx.transitivity(G))  + "\n" 
     #Centrality node: Find which nodes are the most important ones in your network.
     degree_dict = dict(G.degree(G.nodes())) #degree is connectivity of each node: how many egde
     nx.set_node_attributes(G, degree_dict, 'degree') #First add degree each nodes as extra attribute
     sorted_degree = sorted(degree_dict.items(), key=operator.itemgetter(1), reverse=True) #sort this degree list
-    print("Three bigger hubs in Self: " + ' , '.join(sorted_degree[:3]))
+    descriptionSelf+= "The three bigger hubs in me are: " + ', '.join(sorted_degree[:3]) + "\n" 
     #Other centralities than just hubs:
     #EIgenvector Centrality is a kind of extension of degree—it looks at a combination of a node’s edges and the edges of that node’s neighbors. 
     #Eigenvector centrality cares if you are a hub, but it also cares how many hubs you are connected to. Like second order connectivity
@@ -305,11 +305,12 @@ def createGraph(selfGraph):
     nx.set_node_attributes(G, betweenness_dict, 'betweenness')     # Assign each to an attribute in your network
     nx.set_node_attributes(G, eigenvector_dict, 'eigenvector')
     sorted_betweenness = sorted(betweenness_dict.items(), key=operator.itemgetter(1), reverse=True)
-    print("Three most central concepts in Self:"+ ' , '.join(sorted_betweenness[:3]))
-    #Could add other properties:
+    descriptionSelf+="Three most central concepts in me are:"+ ' , '.join(sorted_betweenness[:3])+ "\n" 
+    #Could add other properties>>>
     #Community detection within Self: with modularity, different clusterm Clustered Self etc. >>>
+    print(descriptionSelf)
 
-    return G
+    return G, descriptionSelf
 
 def drawGraph(G):
     """

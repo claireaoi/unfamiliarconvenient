@@ -41,34 +41,38 @@ print('Setting up client to connect to a local mycroft instance')
 
 #***********************************************************************PRELIMINARIES*************************************************************************
 
-def loadSelf(firstTime, nSearch):
+def loadSelf(firstTime, audibleSelfQuest, nSearch):
     """
         The VA loads his selfGraph and memory as last saved. Or build it if first time.
     """
     if firstTime:
         blabla=[]
-        selfGraph, wordsMemory=coreQuest.hatchSelf(nSearch)
         phrase="Hatching self in process..."
         print(phrase)
-        client.emit(Message('speak', data={'utterance': phrase}))
+        if audibleSelfQuest:
+            client.emit(Message('speak', data={'utterance': phrase}))
+        selfGraph, wordsMemory, description=coreQuest.hatchSelf(nSearch)
+        print(description)
+        selfConcepts=list(selfGraph.keys())
+        description2="I am made of:" + ", ".join(selfConcepts)
+        print(description2)
+        if audibleSelfQuest:
+            client.emit(Message('speak', data={'utterance': description}))
+            client.emit(Message('speak', data={'utterance': description2}))
 
     else:
         with open('./workshop/data/selfgraph.txt', 'r') as json_file:
-            selfGraph = json.load(json_file)
-            #selfGraph = eval(json_file.read()) # RIGHT ?
+            #selfGraph = json.load(json_file)
+            selfGraph = eval(json_file.read()) # which one RIGHT ?
         with open('./workshop/data/wordsMemory.txt', "r") as f:
             wordsMemory=f.readlines() #List of words concepts he looked up
-        with open('./workshop/data/whatVAHeard.txt', "r") as f:#Last historics before Chris learned
+        with open('./workshop/data/whatVAHeard.txt', "r") as f: #Last historics before Chris learned
             blabla=f.readlines()
-
-    phrase1="I am here. Self Quest can begin."
-    print(phrase1)
-    client.emit(Message('speak', data={'utterance': phrase1}))
-    selfConcepts=list(selfGraph.keys())
-    phrase2="I am made of:" + ", ".join(selfConcepts)
-    print(phrase2)
-    client.emit(Message('speak', data={'utterance': phrase2}))
-    nSelf=len(selfConcepts)
+        phrase="I am here. Self Quest can begin."
+        print(phrase)
+        if audibleSelfQuest:
+            client.emit(Message('speak', data={'utterance': phrase}))
+  
     return selfGraph, wordsMemory, blabla
 
 #***********************************************************************PROCEDURES for SELF MAPPING ***************************************************************************
@@ -117,7 +121,7 @@ def walkOnNetwork(selfGraph, startWord, lengthWalk):
     deadEnd=False
     word=startWord
     while nStep<lengthWalk and not deadEnd:
-        if  len(selfGraph[word][1].keys())>0: #reminder: selfGraph[word][1] is a dictionnary of the neighbors.
+        if  len(list(selfGraph[word][1].keys()))>0: #reminder: selfGraph[word][1] is a dictionnary of the neighbors.
             nextWord=random.choice(selfGraph[word][1].keys())
             statement= "Path  "+ str(round(selfGraph[word][1][nextWord],2)) + " towards "+ nextWord + ", "+ str(round(selfGraph[nextWord][0],3)) + ". "
             print(statement)
@@ -144,7 +148,7 @@ def selfMapping(word, selfGraph, wordsMemory, ifMLDrift=False, lengthML=100, nSi
         question="Tell me about " + word +"." #Dont need wake up word ?
         phrase=wonder(word) #Phrase to be heard. Can generate Others>>>
         client.emit(Message('speak', data={'utterance': phrase}))
-        print("Question:", phrase)
+        print(phrase)
         answer = askVA(question)  #VA answer and read wikipedia page here
 
     ###(2) Possible ML Drift from the last sentence, case where audibleSelf Quest only.
@@ -152,6 +156,7 @@ def selfMapping(word, selfGraph, wordsMemory, ifMLDrift=False, lengthML=100, nSi
         drift=oneMLDrift(answer, lengthML) 
 
     ##(3) Self Awareness Quest: look if this word is related to Self. May have modified the self graph here!
+    print("Looking if {} is related to Self...".format(word))
     selfGraph, ifadded, simWord, simScore=coreQuest.isSelf(selfGraph, word, nSimMax)
     nSelf=len(list(selfGraph.keys()))
 
@@ -163,7 +168,7 @@ def selfMapping(word, selfGraph, wordsMemory, ifMLDrift=False, lengthML=100, nSi
         selfAwareness= "Whatever, "+ word + ", may not be very related to myself. "
         print(selfAwareness)
     if audibleSelfQuest:
-            client.emit(Message('speak', data={'utterance': selfAwareness}))
+        client.emit(Message('speak', data={'utterance': selfAwareness}))
 
     #(5) Walk on the network if stated and added the word
     if walkNetwork and ifadded:
@@ -231,7 +236,7 @@ def selfQuest(firstTime=False, walkNetwork=False, audibleSelfQuest=False, visual
    
     #(0) Load SELF, memory, and what the VA has heard since last time.
     ## SelfGraph is a dictionnary, whose keys are concepts, and values are couple (weight, neighbors).
-    selfGraph, wordsMemory, blabla=loadSelf(firstTime, nSearch)
+    selfGraph, wordsMemory, blabla=loadSelf(firstTime, audibleSelfQuest, nSearch)
 
 
     #(1) Self Quest, with possible walk on the network, possible ML drifts, and parameters, from the text blabla
@@ -240,7 +245,7 @@ def selfQuest(firstTime=False, walkNetwork=False, audibleSelfQuest=False, visual
         selfGraph, wordsMemory, addedWords, blablaQuest=selfMapLoops(blabla, selfGraph, ifMLDrift, lengthML, nSimMax,  wordsMemory, nSearch, walkNetwork, lengthWalk, audibleSelfQuest)
 
     #(2) State new Self
-    nN=len(selfGraph.keys())
+    nN=len(list(selfGraph.keys()))
     phrase= "Self has now " + str(nN) + " nodes."+ "Self is made of:"+ ', '.join(list(selfGraph.keys()))
     print(phrase)
     if audibleSelfQuest:
@@ -255,8 +260,10 @@ def selfQuest(firstTime=False, walkNetwork=False, audibleSelfQuest=False, visual
 
     #(4) Visualize if want
     if ifVisualize:
-        graph=coreQuest.createGraph(selfGraph)
+        graph, descriptionSelf=coreQuest.createGraph(selfGraph)
         coreQuest.drawGraph(graph)
+        if audibleSelfQuest: #Description of himself. Could comment out if too annoying.
+            client.emit(Message('speak', data={'utterance': descrptionSelf}))
 
 #Direct Launch Interact
 if __name__ == '__main__':
