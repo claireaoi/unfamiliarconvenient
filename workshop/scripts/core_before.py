@@ -52,14 +52,13 @@ from mycroft_bus_client import MessageBusClient, Message
 ###The Message object is a representation of the messagebus message, this will always contain a message type but can also contain data and context.
 ####Message('MESSAGE_TYPE', data={'meaning': 42}, context={'origin': 'A.Dent'})
 #The MycroftBusClient() object can be setup to connect to any host and port as well as any endpont on that host. #If no arguments are provided it will try to connect to a local instance of mycroftr core on the default endpoint and port.
-
 client = MessageBusClient()
 client.run_in_thread()
 print('Setting up client to connect to a local mycroft instance')
 
 # Initialize machine learning
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-model = GPT2LMHeadModel.from_pretrained("../models/gpt-2")
+model = GPT2LMHeadModel.from_pretrained("./workshop/models/gpt-2")
 #model=GPT2LMHead.fromPretrained(path), if you replace path with simply 'gpt2', it will download the baseline gpt2 model automatically
 #***********************************************************************PROCEDURES for ML Drift*************************************************************************
 
@@ -342,7 +341,7 @@ def askChris(question):
 
 def saveGraph():
     # Save selfGraph into file selfgraph.txt. Print number vertices
-    with open('./data/selfgraph.txt', 'w') as outfile:
+    with open('./workshop/data/selfgraph.txt', 'w') as outfile:
         json.dump(selfGraph, outfile)
         nN=len(selfGraph.keys())
         print("Self has " + str(nN) + " nodes.")

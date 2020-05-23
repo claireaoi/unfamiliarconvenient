@@ -27,7 +27,7 @@ def disambiguationPage(word):
     print(str(page) + " is a disambiguation Page on Wikipedia: " + str(disambPage))
     return disambPage
 
-def extract(blabla, graph, memory,  nbWord):
+def extract(blabla, selfGraph, memory,  nbWord):
     OKWikipedia=[]
     OKWiktionary=[]
     if len(blabla)==0: #may have issue ?
@@ -47,10 +47,10 @@ def extract(blabla, graph, memory,  nbWord):
                         if tmp.name().split('.')[0] == word:
                             pos2.append(tmp.pos())
                     if wikipedia.page(word).exists() and (pos == 'NNP' or (len(pos2)>0 and pos2[0]=='n')) and not (word in OKWikipedia) and not word.lower() in memory and not disambiguationPage(word):#up to capital:
-                        if word in graph.keys():#Word is there, augment its weight.
-                            graph[word][0]=graph[word][0]*1.1
-                        elif word.lower() in graph.keys():
-                            graph[word.lower()][0]=graph[word.lower()][0]*1.1
+                        if word in selfGraph.keys():#Word is there, augment its weight.
+                            selfGraph[word][0]=selfGraph[word][0]*1.1
+                        elif word.lower() in selfGraph.keys():
+                            selfGraph[word.lower()][0]=selfGraph[word.lower()][0]*1.1
                         else: #Add word !
                             OKWikipedia.append(word)
                             counter+=1
@@ -72,12 +72,12 @@ def extract(blabla, graph, memory,  nbWord):
                         nextword=nextword.lower()
                     duo=word+" "+nextword
                     if len(word)>1 and len(nextword)>1 and word not in excluded and nextword not in excluded and not hasNumbers(word) and not hasNumbers(nextword) and wikipedia.page(duo).exists() and not (duo in OKWikipedia) and not disambiguationPage(duo):
-                        if duo in graph.keys():
-                            graph[duo][0]=graph[duo][0]*1.1
-                        elif duo.lower() in graph.keys():
-                            graph[duo.lower()][0]=graph[duo.lower()][0]*1.1
+                        if duo in selfGraph.keys():
+                            selfGraph[duo][0]=selfGraph[duo][0]*1.1
+                        elif duo.lower() in selfGraph.keys():
+                            selfGraph[duo.lower()][0]=selfGraph[duo.lower()][0]*1.1
                         else:
                             OKWikipedia.append(duo)
                             counter+=1
         # print("OKWikipedia: ", OKWikipedia)
-        return OKWikipedia, OKWiktionary, graph
+        return OKWikipedia, selfGraph

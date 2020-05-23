@@ -1,27 +1,8 @@
+####This Script aims to visualize the current state of the Graph as recorded in selfgraph.txt
 
-
-
-
-######This Script aims to visualize the current state of the Graph as recorded in selfgraph.txt
-
-
-#TO DO: Better visualisation. Tune parameters aesthetically of graphviz OR change of library
-
-#***********************************************************************REFERENCES***************************************************************************
-
-#######FOR NETWORK creation
-#With  NetworkX cf. https://networkx.github.io/documentation/stable/reference/introduction.html  for Network creation
-#https://programminghistorian.org/en/lessons/exploring-and-analyzing-network-data-with-python
-
-
-#######FOR NETWORK visualisation
-#Notable examples of dedicated and fully-featured graph visualization tools are Cytoscape, Gephi, Graphviz . Plotly too ?
-#Could also use for visualisation: https://pyvis.readthedocs.io/en/latest/
-#https://networkx.github.io/documentation/stable/reference/drawing.html
 
 #***********************************************************************INITIALIZATION***************************************************************************
 
-#PARAMETERS:
 
 ###IMPORT general
 import fire
@@ -41,16 +22,11 @@ from networkx.drawing.nx_agraph import graphviz_layout, to_agraph
 import pygraphviz as pgv
 from PIL import Image
 
-##STEP 0: Load the self Graph
-####selfGraph is a dictionnary, whose keys are concepts, and values are couple (weight, neighbors).
-##Neighbors is a dictionnary whose keys are related concepts and values are weights
-
 
 #***********************************************************************PROCEDURES*************************************************************************
-#selfGraph[word][1][nextWord]
 
 def createGraph():
-    with open('../data/selfgraph.txt') as json_file:
+    with open('./workshop/data/selfgraph.txt') as json_file:
         selfGraph = json.load(json_file)
     #Create graph, network entity with networkx
     G = nx.Graph()
@@ -117,9 +93,9 @@ def drawGraph():
     #Rendering via Graphviz. >>Draw Attributes!
     A.layout('dot')
     #Saving
-    A.draw('../data/selfGraph.png')
+    A.draw('./workshop/data/selfGraph.png')
     #Show Image
-    img=Image.open('../data/selfGraph.png')
+    img=Image.open('./workshop/data/selfGraph.png')
     img.show()
 
 #if __name__ == '__main__':
