@@ -9,7 +9,9 @@ import torch
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 # Initialize machine learning
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-model = GPT2LMHeadModel.from_pretrained("./workshop/models/gpt-2") #>CHANGE PATH!
+model = GPT2LMHeadModel.from_pretrained("./workshop/models/gpt-2") #>Change path if needed
+
+
 
 class MLdriftFallback(FallbackSkill):
     """
@@ -17,26 +19,26 @@ class MLdriftFallback(FallbackSkill):
     """
     def __init__(self):
         super(MLdriftFallback, self).__init__(name='MLdrift')
-        #Parameters of the gpt2-drift taken from file
+        #Parameters for the gpt2-drif, are uploaded from file parametersDrift.py
         self.mood=parametersDrift.currentMood
         self.lengthDrift=parametersDrift.lengthDrift
         self.nDrift=parametersDrift.nDrift
         self.randomizeMood=parametersDrift.randomizeMood
         self.moodSeeds=parametersDrift.moodSeeds
         self.probaMood=parametersDrift.probaMood
-        self.moodySeed=""
         self.temperature=parametersDrift.temperature
         self.repetition_penalty=parametersDrift.repetition_penalty
+        self.moodySeed=""
 
 
     def initialize(self):
         """
-            Registers the fallback skill
-            a FallbackSkill can register any number of fallback handlers
-
+            Registers the fallback handler. 
+            The second Argument is the priority associated to the request. 
+            Here priority put at the maximum.
         """
-        self.register_fallback(self.handle_MLdrift, 1)
-        # Any other initialize code goes here
+        self.register_fallback(self.handle_MLdrift, 100)
+        # Could register several handle
 
    
     def pickMoodySeed(self):
@@ -54,9 +56,9 @@ class MLdriftFallback(FallbackSkill):
         """
             One gpt-2 drift from the last blabla
         """
-        #(1) Choose the mood and possible seed and add it
+        #(1) Choose the mood and possible seed and add it after the blabla
         self.pickMoodySeed()
-        blabla=moodySeed+ " " + utterance
+        blabla=blabla+ " " + self.moodySeed
 
         #(2) ML Drift according to parameters
         process = tokenizer.encode(blabla, return_tensors = "pt")
@@ -64,13 +66,14 @@ class MLdriftFallback(FallbackSkill):
         drift = tokenizer.decode(generator.tolist()[0])
         print(drift)
 
-        #(3) Say the bla out loud
+        #(3) Say the drift out loud
         self.speak(drift)
 
         return drift
 
-#The method that will be called to potentially handle the Utterance
-#The method implements logic to determine if the Utterance can be handled and shall output speech if itcan handle the query.
+    #The method that will be called to potentially handle the Utterance
+    #The method implements logic to determine if the Utterance can be handled and shall output speech if itcan handle the query.
+    #For now, will handle all query.
     def handle_MLdrift(self, message):
         """
             Several moody gpt-2 drifts from the last utterance
@@ -81,16 +84,15 @@ class MLdriftFallback(FallbackSkill):
         loopCount=0
         blabla=utterance
         while loopCount<self.nDrift:
-            loopCount++
+            loopCount+=1
             print("Drift n° {loopCount}")
-            blabla=self.handle_One(blabla) #Only keep last part as context else too big?
+            blabla=self.handle_One(blabla) #Only keep last part as context else too big? >>>
 
 
         return True
 
 
-
-#the Skill creator must make sure the skill handler is removed when the Skill is shutdown by the system.
+    #the Skill creator must make sure the skill handler is removed when the Skill is shutdown by the system.
     def shutdown(self):
         """
             Remove this skill from list of fallback skills.

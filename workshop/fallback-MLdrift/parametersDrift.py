@@ -8,10 +8,9 @@ lengthDrift=200
 nDrift=1
 
 #Temperature Drift
-
-#Repetition Penalty drift
 temperature = 1.0
 
+#Repetition Penalty drift
 repetition_penalty = 2
 
 #If decide randomize moods:
