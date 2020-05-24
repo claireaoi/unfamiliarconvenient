@@ -17,4 +17,6 @@ python3 ./workshop/scripts/selfQuest.py \
 --lengthML=100 \
 --nSimMax=50 \
 --nSearch=100 \
---lengthWalk=10
+--lengthWalk=10 \
+--finetuned_ML_model= False \
+--path_finetuned_ML_model='./workshop/models/gpt-2'

@@ -13,4 +13,6 @@ python3 ./workshop/scripts/interact.py \
 --nMLDrift=1 \
 --ifEvolve=True \
 --randomizeMood=True \
---visualizeGraph=False
+--visualizeGraph=False \
+--finetuned_ML_model= False \
+--path_finetuned_ML_model='./workshop/models/gpt-2'

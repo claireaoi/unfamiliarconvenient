@@ -7,10 +7,6 @@ import parametersDrift
 import transformers
 import torch
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
-# Initialize machine learning
-tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-model = GPT2LMHeadModel.from_pretrained("./workshop/models/gpt-2") #>Change path if needed
-
 
 
 class MLdriftFallback(FallbackSkill):
@@ -29,6 +25,15 @@ class MLdriftFallback(FallbackSkill):
         self.temperature=parametersDrift.temperature
         self.repetition_penalty=parametersDrift.repetition_penalty
         self.moodySeed=""
+        self.finetuned_ML_model=parametersDrift.finetuned_ML_model
+        self.path_finetuned_ML_model=parametersDrift.path_finetuned_ML_model
+
+        # Initialize machine learning
+        self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+        if self.finetuned_ML_model:
+            self.model = GPT2LMHeadModel.from_pretrained(self.path_finetuned_ML_model) 
+        else:
+            self.model=GPT2LMHeadModel.from_pretrained("gpt2")
 
 
     def initialize(self):
@@ -61,9 +66,9 @@ class MLdriftFallback(FallbackSkill):
         blabla=blabla+ " " + self.moodySeed
 
         #(2) ML Drift according to parameters
-        process = tokenizer.encode(blabla, return_tensors = "pt")
-        generator = model.generate(process, max_length = self.lenghtDrift, temperature = self.temperature, repetition_penalty = self.repetition_penalty)
-        drift = tokenizer.decode(generator.tolist()[0])
+        process = self.tokenizer.encode(blabla, return_tensors = "pt")
+        generator = self.model.generate(process, max_length = self.lenghtDrift, temperature = self.temperature, repetition_penalty = self.repetition_penalty)
+        drift = self.tokenizer.decode(generator.tolist()[0])
         print(drift)
 
         #(3) Say the drift out loud

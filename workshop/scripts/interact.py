@@ -97,17 +97,19 @@ def interactLoop(mood='neutral', lengthML=200, nMLDrift=1, ifEvolve=True, random
            f.write(savedBla)
 
 
-def interact(mood='neutral', lengthML=200, nMLDrift=1, ifEvolve=True, randomizeMood=True, visualizeGraph=False):
+def interact(mood='neutral', lengthML=200, nMLDrift=1, ifEvolve=True, randomizeMood=True, visualizeGraph=False, finetuned_ML_model=True, path_finetuned_ML_model='./workshop/models/gpt-2'):
     """
         Interaction with the VA, running until touch ´q´pressed.
     """
     loopCount=0
 
-    #(0) Update parameters chosen for the ML Drift in file
+    #(0) Update the parameters chosen for the ML Drift, write them in file parameters.py of the skill fallback-MLDrift
     parametersDrift.currentMood=mood
     parametersDrift.lengthDrift=lengthML
     parametersDrift.nDrift=nMLDrift
     parametersDrift.randomizeMood=randomizeMood
+    parametersDrift.finetuned_ML_model=finetuned_ML_model
+    parametersDrift.path_finetuned_ML_model=path_finetuned_ML_model
 
     #(1) Interact until press key 'q' on keyboard:
     while not keyboard.is_pressed('q'):
@@ -119,7 +121,8 @@ def interact(mood='neutral', lengthML=200, nMLDrift=1, ifEvolve=True, randomizeM
 
     #(2) Visualise graph if specified.
     if visualizeGraph:
-        vis.drawGraph()
+        graph, descriptionSelf=coreQuest.createGraph(selfGraph) #create the entity graph as networkx library
+        coreQuest.drawGraph(graph)# visualize it (and save it in data folder)
 
 
 #***********************************************************************END*************************************************************************

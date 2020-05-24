@@ -1,5 +1,8 @@
 ############## Parameters chosen for the ML Drift################
 
+#For ML model
+finetuned_ML_model= False
+path_finetuned_ML_model='./workshop/models/gpt-2' 
 
 #Length of ML Drift:
 lengthDrift=200

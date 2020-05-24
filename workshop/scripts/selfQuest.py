@@ -25,9 +25,6 @@ import coreQuest #Main script for the selfQuest, with the different procedures
 import transformers
 import torch
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
-# Initialize machine learning
-tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-model = GPT2LMHeadModel.from_pretrained("./workshop/models/gpt-2")
 
 ###MYCROFT. MessageBus will enable us to control Mycroft through this script (trigger skills, etc.)
 from mycroft_bus_client import MessageBusClient, Message
@@ -228,12 +225,20 @@ def selfMapLoops(blabla, selfGraph, ifMLDrift, lengthML, nSimMax, wordsMemory, n
 #*********************************************************************** MAIN PROCEDURE*************************************************************************
 
 
-def selfQuest(firstTime=False, walkNetwork=False, audibleSelfQuest=False, visualizeGraph=True, ifMLDrift=False, lengthML=100, nSimMax=50, nSearch=100, lengthWalk=10): #ifVisualize
+def selfQuest(firstTime=False, walkNetwork=False, audibleSelfQuest=False, visualizeGraph=True, ifMLDrift=False, lengthML=100, nSimMax=50, nSearch=100, lengthWalk=10, finetuned_ML_model=True, path_finetuned_ML_model='./workshop/models/gpt-2'): #ifVisualize
     """
          Self Quest with possible ML drits, walks on the network, audible Quest, visualisation of the Graph, etc.
          The VA is aiming at growing his self Concept, from what he has heard (in the file whatVAHeard). 
     """
    
+    # Initialize machine learning
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    if finetuned_ML_model:
+        model=GPT2LMHeadModel.from_pretrained(path_finetuned_ML_model)
+    else:
+        model=GPT2LMHeadModel.from_pretrained("gpt2")
+
+    
     #(0) Load SELF, memory, and what the VA has heard since last time.
     ## SelfGraph is a dictionnary, whose keys are concepts, and values are couple (weight, neighbors).
     selfGraph, wordsMemory, blabla=loadSelf(firstTime, audibleSelfQuest, nSearch)
