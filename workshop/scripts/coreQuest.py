@@ -1,9 +1,11 @@
+# !/usr/local/bin/python3
+# -*- coding: utf-8 -*-
 
 
 #***********************************************************************PARAMETERS***************************************************************************
 
-###These parameters could be tuned possibly.
 
+###These parameters could be tuned possibly.
 global startingWeight # Starting weights for every node of the graph. Between 0 and 1
 startingWeight=0.5
 global thresholdSim

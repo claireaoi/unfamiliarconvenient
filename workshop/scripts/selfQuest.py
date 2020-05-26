@@ -1,6 +1,7 @@
 #####Here the VA is doing a self Quest from what he previously heard.
 
-
+# !/usr/local/bin/python3
+# -*- coding: utf-8 -*-
 #***********************************************************************PARAMETERS**************************************************************************
 
 
@@ -8,7 +9,7 @@ global maxWordsMemory
 maxWordsMemory=200 #max memory VA when remember words he has looked up. The first element of memory tells the index of the last element added. To avoid looking for same element repeatedly.
 
 global sleepTime
-sleepTime=30 # shall wait before VA answer ?
+sleepTime=30 # Dont need a priori
 
 wonders=["I wonder about W ", "Maybe it is worth for me to look into W ", "What W is all about?", "W still makes me confused."]
 wakeUpWord="Christopher, "
@@ -19,7 +20,7 @@ import fire
 import json
 
 ###IMPORT scripts
-import coreQuest #Main script for the selfQuest, with the different procedures
+from . import coreQuest #Main script for the selfQuest, with the different procedures
 
 #For the ML Drift
 import transformers
@@ -92,7 +93,7 @@ def askVA(question):
         Ask a question to VA, say & record the answer:
     """
     message=Message("recognizer_loop:utterance", {'utterances':[question],'lang':'en-us'})
-    time.sleep(sleepTime)
+    #time.sleep(sleepTime) #ok Work ?
     client.emit(message)
     answer="Mycroft said {}".format(message.data.get('utterance'))
     print("Answer:", answer)

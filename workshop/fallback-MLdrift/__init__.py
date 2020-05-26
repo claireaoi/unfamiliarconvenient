@@ -1,7 +1,10 @@
+# !/usr/local/bin/python3
+# -*- coding: utf-8 -*-
+
 from mycroft.skills.core import FallbackSkill
 import random
-#Parameter for the ML Drift
-import parametersDrift
+#Parameters for the ML Drift
+from . import parametersDrift
 
 #For the ML Drift
 import transformers
@@ -42,7 +45,7 @@ class MLdriftFallback(FallbackSkill):
             The second Argument is the priority associated to the request. 
             Here priority put at the maximum.
         """
-        self.register_fallback(self.handle_MLdrift, 100)
+        self.register_fallback(self.handle_MLdrift, 1)
         # Could register several handle
 
    
@@ -67,7 +70,7 @@ class MLdriftFallback(FallbackSkill):
 
         #(2) ML Drift according to parameters
         process = self.tokenizer.encode(blabla, return_tensors = "pt")
-        generator = self.model.generate(process, max_length = self.lenghtDrift, temperature = self.temperature, repetition_penalty = self.repetition_penalty)
+        generator = self.model.generate(process, max_length = self.lengthDrift, temperature = self.temperature, repetition_penalty = self.repetition_penalty)
         drift = self.tokenizer.decode(generator.tolist()[0])
         print(drift)
 
@@ -92,7 +95,6 @@ class MLdriftFallback(FallbackSkill):
             loopCount+=1
             print("Drift n° {loopCount}")
             blabla=self.handle_One(blabla) #Only keep last part as context else too big? >>>
-
 
         return True
 

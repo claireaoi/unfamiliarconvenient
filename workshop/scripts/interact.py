@@ -2,7 +2,8 @@
 
 #Main Script for the Interaction between you and your voice assistant
 
-
+# !/usr/local/bin/python3
+# -*- coding: utf-8 -*-
 
 #***********************************************************************CUSTOMIZATION***************************************************************************
 
@@ -30,8 +31,6 @@ import os.path
 from os import path
 from mycroft_bus_client import MessageBusClient, Message
 from mycroft.audio import wait_while_speaking
-###IMPORT other scripts
-import visualize as vis #to visualize the selfGraph
 
 #Global variables
 global humanBla
@@ -41,10 +40,12 @@ VABla=""
 global savedBla
 savedBla=""
 
+###IMPORT other scripts
+from . import coreQuest
 #To be sure looks at parametersDrift. Needed?
 import sys
-sys.path.insert(1, '/opt/mycroft/skills/fallback-MLDrifts/') # Path to the skill folder where the parametersDrift file is
-import parametersDrift #where parameters are for ML Drift
+sys.path.insert(1, './opt/mycroft/skills/fallback-MLdrift/') # Path to the skill folder where the parametersDrift. Shall it be relatively to where is now or to where code was launched ?
+from . import parametersDrift #where parameters are for ML Drift
 
 
 #***********************************************************************PRELIMINARIES*************************************************************************
