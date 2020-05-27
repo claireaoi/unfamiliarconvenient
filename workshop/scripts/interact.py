@@ -41,24 +41,15 @@ global savedBla
 savedBla=""
 
 ###IMPORT other scripts
-from . import coreQuest
+import coreQuest
 #To be sure looks at parametersDrift. Needed?
 import sys
 sys.path.insert(1, './opt/mycroft/skills/fallback-MLdrift/') # Path to the skill folder where the parametersDrift. Shall it be relatively to where is now or to where code was launched ?
-from . import parametersDrift #where parameters are for ML Drift
+import parametersDrift #where parameters are for ML Drift
 
 
 #***********************************************************************PRELIMINARIES*************************************************************************
 
-#Mycroft init
-print('Setting up client to connect to a local mycroft instance. ')
-client = MessageBusClient()
-print('Conversation may start.')
-client.on('recognizer_loop:utterance', record_human_utterance)
-wait_while_speaking() #wait for Mycroft to finish speaking. Useless now, but will be helpful later
-client.run_forever()
-
-#***********************************************************************PROCEDURES*************************************************************************
 
 
 def record_human_utterance(message):
@@ -75,6 +66,13 @@ def record_VA_utterance(message):
     print('Mycroft said "{}"'.format(VABla))
     VABla = str(message.data.get('utterances')[0]) 
 
+#Mycroft init
+print('Setting up client to connect to a local mycroft instance. ')
+client = MessageBusClient()
+print('Conversation may start.')
+client.on('recognizer_loop:utterance', record_human_utterance)
+wait_while_speaking() #wait for Mycroft to finish speaking. Useless now, but will be helpful later
+client.run_forever()
 
 #***********************************************************************MAIN INTERACTION*************************************************************************
 

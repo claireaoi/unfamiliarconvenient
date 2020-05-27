@@ -18,9 +18,10 @@ wakeUpWord="Christopher, "
 ###IMPORT Library
 import fire
 import json
+import random
 
 ###IMPORT scripts
-from . import coreQuest #Main script for the selfQuest, with the different procedures
+import coreQuest #Main script for the selfQuest, with the different procedures
 
 #For the ML Drift
 import transformers
@@ -51,12 +52,8 @@ def loadSelf(firstTime, audibleSelfQuest, nSearch):
             client.emit(Message('speak', data={'utterance': phrase}))
         selfGraph, wordsMemory, description=coreQuest.hatchSelf(nSearch)
         print(description)
-        selfConcepts=list(selfGraph.keys())
-        description2="I am made of:" + ", ".join(selfConcepts)
-        print(description2)
         if audibleSelfQuest:
             client.emit(Message('speak', data={'utterance': description}))
-            client.emit(Message('speak', data={'utterance': description2}))
 
     else:
         with open('./workshop/data/selfgraph.txt', 'r') as json_file:
@@ -65,13 +62,13 @@ def loadSelf(firstTime, audibleSelfQuest, nSearch):
         with open('./workshop/data/wordsMemory.txt', "r") as f:
             wordsMemory=f.readlines() #List of words concepts he looked up
         with open('./workshop/data/whatVAHeard.txt', "r") as f: #Last historics before Chris learned
-            blabla=f.readlines()
+            whatVAHeard=f.read().replace('\n', '')
         phrase="I am here. Self Quest can begin."
         print(phrase)
         if audibleSelfQuest:
             client.emit(Message('speak', data={'utterance': phrase}))
   
-    return selfGraph, wordsMemory, blabla
+    return selfGraph, wordsMemory, whatVAHeard
 
 #***********************************************************************PROCEDURES for SELF MAPPING ***************************************************************************
 
@@ -185,7 +182,7 @@ def selfMapping(word, selfGraph, wordsMemory, ifMLDrift=False, lengthML=100, nSi
 
     return selfGraph, wordsMemory, answer, drift, ifadded
 
-def selfMapLoops(blabla, selfGraph, ifMLDrift, lengthML, nSimMax, wordsMemory, nSearch, walkNetwork=False, lengthWalk=10, audibleSelfQuest=False):
+def selfMapLoops(whatVAHeard, selfGraph, ifMLDrift, lengthML, nSimMax, wordsMemory, nSearch, walkNetwork=False, lengthWalk=10, audibleSelfQuest=False):
    
     """
         VA try to grows his selfGraph from an inital blabla with possible ML drifts, walks on the network, audible Quest, etc.
@@ -199,7 +196,7 @@ def selfMapLoops(blabla, selfGraph, ifMLDrift, lengthML, nSimMax, wordsMemory, n
         walkNetwork=False
 
     #(1) Look at words for which exist wikipedia Page and not in selfGraph nor in memory. nSearch is the Nb word max will look for in Wikipedia
-    OKWikipedia, selfGraph=extractWiki(blabla, selfGraph, wordsMemory, nSearch)#actually real nSearch may double because of composed words.
+    OKWikipedia, selfGraph=coreQuest.extractWiki(whatVAHeard, selfGraph, wordsMemory, nSearch)#actually real nSearch may double because of composed words.
  
     #(2A) If no words to look, will drift with ML first to have a new text to loop from.
     if len(OKWikipedia)==0: #If the list is empty
@@ -242,13 +239,13 @@ def selfQuest(firstTime=False, walkNetwork=False, audibleSelfQuest=False, visual
     
     #(0) Load SELF, memory, and what the VA has heard since last time.
     ## SelfGraph is a dictionnary, whose keys are concepts, and values are couple (weight, neighbors).
-    selfGraph, wordsMemory, blabla=loadSelf(firstTime, audibleSelfQuest, nSearch)
+    selfGraph, wordsMemory, whatVAHeard=loadSelf(firstTime, audibleSelfQuest, nSearch)
 
 
-    #(1) Self Quest, with possible walk on the network, possible ML drifts, and parameters, from the text blabla
-    #If not first time (if first time, assume blabla is empty)
+    #(1) Self Quest, with possible walk on the network, possible ML drifts, and parameters, from the text whatVAHear
+    #If not first time (if first time, assume whatVAHear is empty)
     if not firstTime:
-        selfGraph, wordsMemory, addedWords, blablaQuest=selfMapLoops(blabla, selfGraph, ifMLDrift, lengthML, nSimMax,  wordsMemory, nSearch, walkNetwork, lengthWalk, audibleSelfQuest)
+        selfGraph, wordsMemory, addedWords, blablaQuest=selfMapLoops(whatVAHear, selfGraph, ifMLDrift, lengthML, nSimMax,  wordsMemory, nSearch, walkNetwork, lengthWalk, audibleSelfQuest)
 
     #(2) State new Self
     nN=len(list(selfGraph.keys()))
@@ -265,7 +262,7 @@ def selfQuest(firstTime=False, walkNetwork=False, audibleSelfQuest=False, visual
         f.write("\n".join(wordsMemory))
 
     #(4) Visualize if want
-    if ifVisualize:
+    if visualizeGraph:
         graph, descriptionSelf=coreQuest.createGraph(selfGraph)
         coreQuest.drawGraph(graph)
         if audibleSelfQuest: #Description of himself. Could comment out if too annoying.

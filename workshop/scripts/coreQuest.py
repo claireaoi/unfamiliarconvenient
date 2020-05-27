@@ -73,9 +73,13 @@ def extractWiki(blabla, selfGraph, memory,  nSearch):
     """
     OKWikipedia=[]
     if len(blabla)==0: #empty
-        return OKWikipedia
+        print("No new words to grow from.")
+        return OKWikipedia, selfGraph
     else:
         counter=0#count words added
+        print(blabla)
+        print(word_tokenize(blabla))
+        print(nltk.pos_tag(word_tokenize(blabla))))
         for word, pos in nltk.pos_tag(word_tokenize(blabla)):
             if counter<nSearch:#Stop once has enough words
                 if not word.isupper():#To avoid turning words like AI lower case. Else turn to lower case. Ex: donald_trump 
@@ -117,6 +121,7 @@ def extractWiki(blabla, selfGraph, memory,  nSearch):
                         else:
                             OKWikipedia.append(duo)
                             counter+=1
+        print("New words to learn from", OKWipedia)
         return OKWikipedia, selfGraph
 
 
@@ -175,7 +180,7 @@ def hatchSelf(nSearch):
 
     #(1) Extract wikipedia-ble words from these texts and put them in a waiting List, and start a selfGraph which is a dictionnary in Python
     # For now, only with Wikipedia. Could add wiktionary.
-    selfConcepts, voidGraph=extractWiki(rawVA, dict(), memory, nSearch)
+    selfConcepts, voidGraph=extractWiki(rawVA, dict(), [], nSearch)
     #Record this in a text file
     fileW = open("./workshop/data/wiki.txt","w")
     print('writing wiki files')
@@ -229,7 +234,7 @@ def isSelf(selfGraph, word, nSimMax):
     maxSim=0
     simWord=""
     #Check similarity with other concepts in Self
-    for i, wordSelf in list(selfGraph.keys()):
+    for i, wordSelf in enumerate(list(selfGraph.keys())):
         if i in indices:
             simScore= semanticSimilarity(word,wordSelf)
             if simScore>thresholdSim:
@@ -330,5 +335,3 @@ def drawGraph(G):
 
 
 
-
-#*************************************************************************************************************************************************

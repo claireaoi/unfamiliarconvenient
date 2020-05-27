@@ -5,7 +5,7 @@ from mycroft.skills.core import FallbackSkill
 import random
 #Parameters for the ML Drift
 from . import parametersDrift
-
+import filtering #Script to clean the data
 #For the ML Drift
 import transformers
 import torch
@@ -43,9 +43,9 @@ class MLdriftFallback(FallbackSkill):
         """
             Registers the fallback handler. 
             The second Argument is the priority associated to the request. 
-            Here priority put at the maximum.
+            Lower is higher priority. But number 1-4 are bypassing other skills.
         """
-        self.register_fallback(self.handle_MLdrift, 1)
+        self.register_fallback(self.handle_MLdrift, 6)
         # Could register several handle
 
    
@@ -60,10 +60,30 @@ class MLdriftFallback(FallbackSkill):
             self.moodySeed=random.choice(self.moodSeeds[self.mood])
 
 
+    def updateParam(self):
+        """
+            Update the parameters from the file
+        """
+        self.mood=parametersDrift.currentMood
+        self.lengthDrift=parametersDrift.lengthDrift
+        self.nDrift=parametersDrift.nDrift
+        self.randomizeMood=parametersDrift.randomizeMood
+        self.moodSeeds=parametersDrift.moodSeeds
+        self.probaMood=parametersDrift.probaMood
+        self.temperature=parametersDrift.temperature
+        self.repetition_penalty=parametersDrift.repetition_penalty
+        self.moodySeed=""
+        self.finetuned_ML_model=parametersDrift.finetuned_ML_model
+        self.path_finetuned_ML_model=parametersDrift.path_finetuned_ML_model
+
+
     def handle_One(self, blabla):
         """
             One gpt-2 drift from the last blabla
         """
+        #(0) Update the parameters from the file parametersDrift as they may have changed
+        self.updateParam()
+
         #(1) Choose the mood and possible seed and add it after the blabla
         self.pickMoodySeed()
         blabla=blabla+ " " + self.moodySeed
@@ -74,10 +94,14 @@ class MLdriftFallback(FallbackSkill):
         drift = self.tokenizer.decode(generator.tolist()[0])
         print(drift)
 
-        #(3) Say the drift out loud
-        self.speak(drift)
+        #(3) Filter the Drift. Here a small filtering procedure. 
+        #Yet you are free to change the parameters, make it your own, by pass this step (comment out)
+        filtered_drift=filtering.filterText(drift, maxNonAlpha=15, maxRatio=0.3)
+        
+        #(4) Say the drift out loud
+        self.speak(filtered_drift)
 
-        return drift
+        return filtered_drift
 
     #The method that will be called to potentially handle the Utterance
     #The method implements logic to determine if the Utterance can be handled and shall output speech if itcan handle the query.
