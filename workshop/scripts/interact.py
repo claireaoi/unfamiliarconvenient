@@ -1,11 +1,18 @@
-
-
-#Main Script for the Interaction between you and your voice assistant
-
 # !/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
-#***********************************************************************CUSTOMIZATION***************************************************************************
+
+######Description############
+#  
+# Main Script for the Interaction between you and your voice assistant
+#
+######About############
+# This script was created for the workshop Unfamiliar Virtual Convenient - Growing your Voice Assistant
+# led by Vytautas Jankauskas and Claire Glanois through School of Machines, Make & believe, in spring 2020.
+# 
+# Feel free to tune, or reshape it according to your project.
+
+#***********************************************************************PARAMETERS**************************************************************************
 
 #For the skills: decide if add to the recorded files the answer of Mycroft, depending on a character threshold
 #If never want to keep Mycroft answer in memory to train the ML algorithm, put a very very high limit.

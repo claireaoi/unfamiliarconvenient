@@ -1,16 +1,74 @@
 # !/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
+
+######Description############
+#  
+# FallBack Skill where the VA do ML drifts, from a gpt-2 model, and the parameters registered in parametersDrift.py
+#
+######About############
+# This script was created for the workshop Unfamiliar Virtual Convenient - Growing your Voice Assistant
+# led by Vytautas Jankauskas and Claire Glanois through School of Machines, Make & believe, in spring 2020.
+# 
+# Feel free to tune, or reshape it according to your project.
+
+#***********************************************************************INITIALIZATION***************************************************************************
+
 from mycroft.skills.core import FallbackSkill
 import random
 #Parameters for the ML Drift
 from . import parametersDrift
-import filtering #Script to clean the data
 #For the ML Drift
 import transformers
 import torch
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 
+#For NLP
+import nltk
+from nltk import word_tokenize, sent_tokenize, pos_tag
+from nltk.corpus import wordnet
+from nltk.stem.wordnet import WordNetLemmatizer
+lemmatizer = WordNetLemmatizer()
+
+#***********************************************************************PRELIMINARIES***************************************************************************
+
+def alphabetRatio(inputString):
+    """
+        Return number and ratio of non alphabetic character (white spaces not included) in a sentence
+    """
+    count=0
+    ratio=0
+    for char in inputString:
+        if not char.isalpha() and not char==" ":
+            count+=1
+    if not len(inputString)==0:
+        ratio=count/len(inputString)
+    return ratio, count
+
+
+def filterText(blabla, maxNonAlpha=maxNonAlpha , maxRatio=maxRatio):
+    """
+        Filter a text: remove sentences with higher non alphabetic number of character than the indicated max.
+       Remove sentence with higher non alphabetical character ratio too than the indicated one.
+       Output: Filtered text with the filteredRatio (between 0 and 1) measuring the amount of text which remains.
+
+       NB: Filtering procedures are a very specialised matter, and depend of the outcome you want to have. 
+       You could check repetition of characters, or too long words. 
+       Or even filter any sentence which does not make gramatical sense (yet, this may be too strong criteria).
+       You can filter also unrecognised words (yet depend if you have proper noun), etc.
+    """
+    sentences=nltk.tokenize.sent_tokenize(blabla)
+    filtered_bla=""
+    for sentence in sentences:
+        ratio, count=alphabetRatio(sentence) #ratio non letter elements
+        if len(sentence)>3 and ratio<maxRatio and count<maxNonAlpha:   #Test if not to many symbol and grammar ok
+                filtered_bla+=sentence
+    filteredRatio = len(filtered_bla)/len(blabla) #. Ideally wish it close to 1 
+    print(filtered_bla)
+    return filtered_bla, filteredRatio
+
+
+#***********************************************************************MAIN CLASS***************************************************************************
 
 class MLdriftFallback(FallbackSkill):
     """
@@ -131,6 +189,7 @@ class MLdriftFallback(FallbackSkill):
         self.remove_fallback(self.handle_MLdrift)
         super(MLdriftFallback, self).shutdown()
 
+#***********************************************************************create SKILL***************************************************************************
 
 def create_skill():
     return MLdriftFallback()

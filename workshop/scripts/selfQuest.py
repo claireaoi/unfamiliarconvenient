@@ -1,7 +1,18 @@
-#####Here the VA is doing a self Quest from what he previously heard.
-
 # !/usr/local/bin/python3
 # -*- coding: utf-8 -*-
+
+
+######Description############
+#  
+# VA is running a self Quest from what he previously heard: he is trying to grow and map his self, represented
+# as a self-graph of concepts, and their relations.
+#
+######About############
+# This script was created for the workshop Unfamiliar Virtual Convenient - Growing your Voice Assistant
+# led by Vytautas Jankauskas and Claire Glanois through School of Machines, Make & believe, in spring 2020.
+# 
+# Feel free to tune, or reshape it according to your project.
+
 #***********************************************************************PARAMETERS**************************************************************************
 
 

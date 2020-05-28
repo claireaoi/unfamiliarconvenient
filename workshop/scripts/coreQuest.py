@@ -1,6 +1,18 @@
 # !/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
+######Description############
+#  
+# Behind the scene of procedures used in selfQuest.py mainly. 
+# 
+#
+######About############
+# This script was created for the project Unfamiliar Convenient by Vytautas Jankauskas and Claire Glanois.
+# It is used in the workshop Unfamiliar Virtual Convenient, led through School of Machines, Make & believe, in spring 2020.
+# 
+# That is why comments may be messier and still in progress. :)
+# Feel free to tune, or reshape it according to your project.
+#
 
 #***********************************************************************PARAMETERS***************************************************************************
 
