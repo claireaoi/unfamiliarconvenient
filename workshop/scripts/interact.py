@@ -12,14 +12,9 @@
 # 
 # Feel free to tune, or reshape it according to your project.
 
-#***********************************************************************PARAMETERS**************************************************************************
-
-#For the skills: decide if add to the recorded files the answer of Mycroft, depending on a character threshold
-#If never want to keep Mycroft answer in memory to train the ML algorithm, put a very very high limit.
-keepThreshold=50
-
 
 #***********************************************************************INITIALIZATION***************************************************************************
+keepThreshold=50
 
 ###IMPORT libraries
 import fire
@@ -49,15 +44,8 @@ savedBla=""
 
 ###IMPORT other scripts
 import coreQuest
-#To be sure looks at parametersDrift. Needed?
-import sys
-sys.path.insert(1, './opt/mycroft/skills/fallback-MLdrift/') # Path to the skill folder where the parametersDrift. Shall it be relatively to where is now or to where code was launched ?
-import parametersDrift #where parameters are for ML Drift
-
 
 #***********************************************************************PRELIMINARIES*************************************************************************
-
-
 
 def record_human_utterance(message):
     """
@@ -84,7 +72,7 @@ client.run_forever()
 #***********************************************************************MAIN INTERACTION*************************************************************************
 
 
-def interactLoop(mood='neutral', lengthML=200, nMLDrift=1, ifEvolve=True, randomizeMood=True):
+def interactLoop(ifEvolve=True):
     """
         One interaction Loop with the VA.
     """
@@ -103,32 +91,19 @@ def interactLoop(mood='neutral', lengthML=200, nMLDrift=1, ifEvolve=True, random
            f.write(savedBla)
 
 
-def interact(mood='neutral', lengthML=200, nMLDrift=1, ifEvolve=True, randomizeMood=True, visualizeGraph=False, finetuned_ML_model=True, path_finetuned_ML_model='./workshop/models/gpt-2'):
+def interact(ifEvolve=True):
     """
         Interaction with the VA, running until touch ´q´pressed.
     """
     loopCount=0
-
-    #(0) Update the parameters chosen for the ML Drift, write them in file parameters.py of the skill fallback-MLDrift
-    parametersDrift.currentMood=mood
-    parametersDrift.lengthDrift=lengthML
-    parametersDrift.nDrift=nMLDrift
-    parametersDrift.randomizeMood=randomizeMood
-    parametersDrift.finetuned_ML_model=finetuned_ML_model
-    parametersDrift.path_finetuned_ML_model=path_finetuned_ML_model
-
-    #(1) Interact until press key 'q' on keyboard:
+    #Interact until press key 'q' on keyboard:
     while not keyboard.is_pressed('q'):
         loopCount+=1
         print('Interaction n° "{}" begins.'.format(loopCount))
-        interactLoop(mood, lengthML, nMLDrift, ifEvolve, randomizeMood)
+        interactLoop(ifEvolve)
 
     print('Human ended interaction.')
 
-    #(2) Visualise graph if specified.
-    if visualizeGraph:
-        graph, descriptionSelf=coreQuest.createGraph(selfGraph) #create the entity graph as networkx library
-        coreQuest.drawGraph(graph)# visualize it (and save it in data folder)
 
 
 #***********************************************************************END*************************************************************************
