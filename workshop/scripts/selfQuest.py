@@ -3,14 +3,14 @@
 
 
 ######Description############
-#  
+#
 # VA is running a self Quest from what he previously heard: he is trying to grow and map his self, represented
 # as a self-graph of concepts, and their relations.
 #
 ######About############
 # This script was created for the workshop Unfamiliar Virtual Convenient - Growing your Voice Assistant
 # led by Vytautas Jankauskas and Claire Glanois through School of Machines, Make & believe, in spring 2020.
-# 
+#
 # Feel free to tune, or reshape it according to your project.
 
 #***********************************************************************PARAMETERS**************************************************************************
@@ -43,7 +43,7 @@ from transformers import GPT2Tokenizer, GPT2LMHeadModel
 from mycroft_bus_client import MessageBusClient, Message
 ###The Message object is a representation of the messagebus message, this will always contain a message type but can also contain data and context.
 ####Message('MESSAGE_TYPE', data={'meaning': 42}, context={'origin': 'A.Dent'})
-#The MycroftBusClient() object can be setup to connect to any host and port as well as any endpont on that host. 
+#The MycroftBusClient() object can be setup to connect to any host and port as well as any endpont on that host.
 #If no arguments are provided it will try to connect to a local instance of mycroftr core on the default endpoint and port.
 client = MessageBusClient()
 client.run_in_thread()
@@ -56,7 +56,7 @@ def loadSelf(firstTime, audibleSelfQuest, nSearch):
         The VA loads his selfGraph and memory as last saved. Or build it if first time.
     """
     if firstTime:
-        blabla=[]
+        whatVAHeard=""
         phrase="Hatching self in process..."
         print(phrase)
         if audibleSelfQuest:
@@ -78,7 +78,7 @@ def loadSelf(firstTime, audibleSelfQuest, nSearch):
         print(phrase)
         if audibleSelfQuest:
             client.emit(Message('speak', data={'utterance': phrase}))
-  
+
     return selfGraph, wordsMemory, whatVAHeard
 
 #***********************************************************************PROCEDURES for SELF MAPPING ***************************************************************************
@@ -108,7 +108,7 @@ def askVA(question):
     return answer
 
 
-def oneMLDrift(context, lengthML): 
+def oneMLDrift(context, lengthML):
     """
         One ML drift with gpt-2, with a context. Printed and said by VA.
     """
@@ -141,7 +141,7 @@ def walkOnNetwork(selfGraph, startWord, lengthWalk):
         client.emit(Message('speak', data={'utterance': "Walk ended here."})) #or all answer ?
 
 
-def selfMapping(word, selfGraph, wordsMemory, ifMLDrift=False, lengthML=100, nSimMax=5, lengthWalk=10, walkNetwork=False, audibleSelfQuest=False):
+def selfMapping(word, selfGraph, wordsMemory, ifMLDrift, lengthML, nSimMax, lengthWalk, walkNetwork, audibleSelfQuest):
     """
         Self Mapping where look if a specific word is related to his selfm and possibly grow his selfGraph.
         This can be audible, and integrate or not a ML drift and a walk on the network
@@ -159,7 +159,7 @@ def selfMapping(word, selfGraph, wordsMemory, ifMLDrift=False, lengthML=100, nSi
 
     ###(2) Possible ML Drift from the last sentence, case where audibleSelf Quest only.
     if ifMLDrift:
-        drift=oneMLDrift(answer, lengthML) 
+        drift=oneMLDrift(answer, lengthML)
 
     ##(3) Self Awareness Quest: look if this word is related to Self. May have modified the self graph here!
     print("Looking if {} is related to Self...".format(word))
@@ -193,8 +193,8 @@ def selfMapping(word, selfGraph, wordsMemory, ifMLDrift=False, lengthML=100, nSi
 
     return selfGraph, wordsMemory, answer, drift, ifadded
 
-def selfMapLoops(whatVAHeard, selfGraph, ifMLDrift, lengthML, nSimMax, wordsMemory, nSearch, walkNetwork=False, lengthWalk=10, audibleSelfQuest=False):
-   
+def selfMapLoops(whatVAHeard, selfGraph, ifMLDrift, lengthML, nSimMax, wordsMemory, nSearch, walkNetwork, lengthWalk, audibleSelfQuest):
+
     """
         VA try to grows his selfGraph from an inital blabla with possible ML drifts, walks on the network, audible Quest, etc.
     """
@@ -208,7 +208,7 @@ def selfMapLoops(whatVAHeard, selfGraph, ifMLDrift, lengthML, nSimMax, wordsMemo
 
     #(1) Look at words for which exist wikipedia Page and not in selfGraph nor in memory. nSearch is the Nb word max will look for in Wikipedia
     OKWikipedia, selfGraph=coreQuest.extractWiki(whatVAHeard, selfGraph, wordsMemory, nSearch)#actually real nSearch may double because of composed words.
- 
+
     #(2A) If no words to look, will drift with ML first to have a new text to loop from.
     if len(OKWikipedia)==0: #If the list is empty
         phrase="No new concepts to grow from."
@@ -222,11 +222,11 @@ def selfMapLoops(whatVAHeard, selfGraph, ifMLDrift, lengthML, nSimMax, wordsMemo
             print("Current look up word:", word)
 
             selfGraph, wordsMemory, answer, drift, ifadded=selfMapping(word, selfGraph, wordsMemory, ifMLDrift, lengthML, nSimMax, lengthWalk, walkNetwork, audibleSelfQuest)
-          
+
             if ifadded:
                 addedWords.append(word)
                 blabla=blabla+ "\n"+ answer + "\n"+ drift
-    
+
     return selfGraph, wordsMemory, addedWords, blabla
 
 
@@ -234,12 +234,12 @@ def selfMapLoops(whatVAHeard, selfGraph, ifMLDrift, lengthML, nSimMax, wordsMemo
 #*********************************************************************** MAIN PROCEDURE*************************************************************************
 
 
-def selfQuest(firstTime=False, walkNetwork=False, audibleSelfQuest=False, visualizeGraph=True, ifMLDrift=False, lengthML=100, nSimMax=50, nSearch=100, lengthWalk=10, finetuned_ML_model=True, path_finetuned_ML_model='./workshop/models/gpt-2'): #ifVisualize
+def selfQuest(firstTime=False, walkNetwork=False, audibleSelfQuest=True, visualizeGraph=True, ifMLDrift=False, lengthML=100, nSimMax=50, nSearch=100, lengthWalk=10, finetuned_ML_model=False, path_finetuned_ML_model='./workshop/models/gpt-2'): #ifVisualize
     """
          Self Quest with possible ML drits, walks on the network, audible Quest, visualisation of the Graph, etc.
-         The VA is aiming at growing his self Concept, from what he has heard (in the file whatVAHeard). 
+         The VA is aiming at growing his self Concept, from what he has heard (in the file whatVAHeard).
     """
-   
+
     # Initialize machine learning
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
     if finetuned_ML_model:
@@ -247,7 +247,7 @@ def selfQuest(firstTime=False, walkNetwork=False, audibleSelfQuest=False, visual
     else:
         model=GPT2LMHeadModel.from_pretrained("gpt2")
 
-    
+
     #(0) Load SELF, memory, and what the VA has heard since last time.
     ## SelfGraph is a dictionnary, whose keys are concepts, and values are couple (weight, neighbors).
     selfGraph, wordsMemory, whatVAHeard=loadSelf(firstTime, audibleSelfQuest, nSearch)
@@ -256,7 +256,7 @@ def selfQuest(firstTime=False, walkNetwork=False, audibleSelfQuest=False, visual
     #(1) Self Quest, with possible walk on the network, possible ML drifts, and parameters, from the text whatVAHear
     #If not first time (if first time, assume whatVAHear is empty)
     if not firstTime:
-        selfGraph, wordsMemory, addedWords, blablaQuest=selfMapLoops(whatVAHear, selfGraph, ifMLDrift, lengthML, nSimMax,  wordsMemory, nSearch, walkNetwork, lengthWalk, audibleSelfQuest)
+        selfGraph, wordsMemory, addedWords, blablaQuest=selfMapLoops(whatVAHeard, selfGraph, ifMLDrift, lengthML, nSimMax,  wordsMemory, nSearch, walkNetwork, lengthWalk, audibleSelfQuest)
 
     #(2) State new Self
     nN=len(list(selfGraph.keys()))
@@ -277,7 +277,7 @@ def selfQuest(firstTime=False, walkNetwork=False, audibleSelfQuest=False, visual
         graph, descriptionSelf=coreQuest.createGraph(selfGraph)
         coreQuest.drawGraph(graph)
         if audibleSelfQuest: #Description of himself. Could comment out if too annoying.
-            client.emit(Message('speak', data={'utterance': descrptionSelf}))
+            client.emit(Message('speak', data={'utterance': descriptionSelf}))
 
 #Direct Launch Interact
 if __name__ == '__main__':

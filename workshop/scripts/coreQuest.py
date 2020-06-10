@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 
 ######Description############
-#  
-# Behind the scene of procedures used in selfQuest.py mainly. 
-# 
+#
+# Behind the scene of procedures used in selfQuest.py.
+#
 #
 ######About############
 # This script was created for the project Unfamiliar Convenient by Vytautas Jankauskas and Claire Glanois.
 # It is used in the workshop Unfamiliar Virtual Convenient, led through School of Machines, Make & believe, in spring 2020.
-# 
+#
 # That is why comments may be messier and still in progress. :)
 # Feel free to tune, or reshape it according to your project.
 #
@@ -91,10 +91,10 @@ def extractWiki(blabla, selfGraph, memory,  nSearch):
         counter=0#count words added
         print(blabla)
         print(word_tokenize(blabla))
-        print(nltk.pos_tag(word_tokenize(blabla))))
+        print(nltk.pos_tag(word_tokenize(blabla)))
         for word, pos in nltk.pos_tag(word_tokenize(blabla)):
             if counter<nSearch:#Stop once has enough words
-                if not word.isupper():#To avoid turning words like AI lower case. Else turn to lower case. Ex: donald_trump 
+                if not word.isupper():#To avoid turning words like AI lower case. Else turn to lower case. Ex: donald_trump
                     word=word.lower()
                 #Below, keep mostly noun words. Could also take verbs (VBP) and other type if want.
                 if not word is None and len(word)>1 and not hasNumbers(word) and (pos == 'NN' or pos == 'NNS' or pos == 'NNP'):
@@ -133,7 +133,7 @@ def extractWiki(blabla, selfGraph, memory,  nSearch):
                         else:
                             OKWikipedia.append(duo)
                             counter+=1
-        print("New words to learn from", OKWipedia)
+        print("New words to learn from", OKWikipedia)
         return OKWikipedia, selfGraph
 
 
@@ -143,7 +143,7 @@ def extractWiki(blabla, selfGraph, memory,  nSearch):
 def connectNodes(selfGraph):
     """
        Build the Edges of a selfGraph given
-       Check if concepts in selfGraph are related to each other. 
+       Check if concepts in selfGraph are related to each other.
        If similarity above a threshold, update the edges of the graph accordingly, return the number of edges.
     """
     #Edit: Can update as symmetric here run twice each edges. Return the number of added edges.
@@ -188,7 +188,7 @@ def hatchSelf(nSearch):
     """
     # (0) Load the Initial list of words to hatch the VA selfGraph: in hatcHVA.txt
     with open('./workshop/data/hatchVA.txt') as f:
-        rawVA= ''.join(f.readlines()) 
+        rawVA= ''.join(f.readlines())
 
     #(1) Extract wikipedia-ble words from these texts and put them in a waiting List, and start a selfGraph which is a dictionnary in Python
     # For now, only with Wikipedia. Could add wiktionary.
@@ -214,7 +214,7 @@ def hatchSelf(nSearch):
     ##(3) Build the connections within the Self: the edges of the Graph, from semantic similarity.
     #This step may take time, according the length of the list.
     nEdge=connectNodes(selfGraph)
-    
+
     #(4) Save it, in both selfbirth.txt and selfgraph.txtm to keep always initial graph in memory.
     with open('./workshop/data/selfbirth.txt', 'w') as outfile:
         json.dump(selfGraph, outfile)
@@ -227,7 +227,7 @@ def hatchSelf(nSearch):
     wo=wordsMemory[0]#To remember where is oldest word
     wordsMemory[0] = str(len(wordsMemory))
     wordsMemory.append(wo)
-    
+
     mesh=(nEdge-nNode+1) / (2*nNode-5)
     description="Self is born. Self is a network with {} concepts and {} connections. My meshedness coefficient is {} .".format(nNode, nEdge, round(mesh,3))
 
@@ -267,7 +267,6 @@ def isSelf(selfGraph, word, nSimMax):
 
 #***********************************************************************PROCEDURES to VISUALIZE GRAPH***************************************************************************
 
-
 def createGraph(selfGraph):
     """
         Create graph, network entity with networkx library from selfGraph (a dictionnary).
@@ -298,33 +297,34 @@ def createGraph(selfGraph):
     #nx.set_edge_attributes(G, weightEdge, 'relatedness')
 
     #(5) Look at properties related to self Graph
-    descriptionSelf=nx.info(G) + "\n" 
-    descriptionSelf+='Density of Self: {}'.format(nx.density(G)) + "\n" 
-    descriptionSelf+='Am I connected Connected? '+ str(nx.is_connected(G)) + "\n" 
+    descriptionSelf=nx.info(G) + "\n"
+    descriptionSelf+='Density of Self: {}'.format(nx.density(G)) + "\n"
+    descriptionSelf+='Am I connected Connected? '+ str(nx.is_connected(G)) + "\n"
     components = nx.connected_components(G)
-    descriptionSelf+='I have {} connected components'.format(nx.number_connected_components(G)) + "\n" 
+    descriptionSelf+='I have {} connected components'.format(nx.number_connected_components(G)) + "\n"
     largest_component = max(components, key=len)
     subSelf = G.subgraph(largest_component) # Create a "subgraph" of just the largest component
     diameter = nx.diameter(subSelf)
-    descriptionSelf+='The diameter of my largest Connected Component is:'+ str(diameter)  + "\n" 
-    #Transitivity, like density, expresses how interconnected a graph is in terms of a ratio of actual over possible connections. 
-    #Transitivity is the ratio of all triangles over all possible triangles. 
-    descriptionSelf+="My transitivity coefficient is"+ str(nx.transitivity(G))  + "\n" 
+    descriptionSelf+='The diameter of my largest Connected Component is:'+ str(diameter)  + "\n"
+    #Transitivity, like density, expresses how interconnected a graph is in terms of a ratio of actual over possible connections.
+    #Transitivity is the ratio of all triangles over all possible triangles.
+    descriptionSelf+="My transitivity coefficient is"+ str(nx.transitivity(G))  + "\n"
     #Centrality node: Find which nodes are the most important ones in your network.
     degree_dict = dict(G.degree(G.nodes())) #degree is connectivity of each node: how many egde
     nx.set_node_attributes(G, degree_dict, 'degree') #First add degree each nodes as extra attribute
     sorted_degree = sorted(degree_dict.items(), key=operator.itemgetter(1), reverse=True) #sort this degree list
-    descriptionSelf+= "The three bigger hubs in me are: " + ', '.join(sorted_degree[:3]) + "\n" 
+    #print(sorted_degree[:3])
+    descriptionSelf+= "The three bigger hubs in me are: " + ', '.join(elt[0] for elt in sorted_degree[:3]) + "\n"
     #Other centralities than just hubs:
-    #EIgenvector Centrality is a kind of extension of degree—it looks at a combination of a node’s edges and the edges of that node’s neighbors. 
+    #EIgenvector Centrality is a kind of extension of degree—it looks at a combination of a node’s edges and the edges of that node’s neighbors.
     #Eigenvector centrality cares if you are a hub, but it also cares how many hubs you are connected to. Like second order connectivity
     #Betweenness centrality looks at all the shortest paths that pass through a particular node (see above).
     betweenness_dict = nx.betweenness_centrality(G)
-    eigenvector_dict = nx.eigenvector_centrality(G)
+    #eigenvector_dict = nx.eigenvector_centrality(G) #too computationally heavy for VB?
     nx.set_node_attributes(G, betweenness_dict, 'betweenness')     # Assign each to an attribute in your network
-    nx.set_node_attributes(G, eigenvector_dict, 'eigenvector')
+    #nx.set_node_attributes(G, eigenvector_dict, 'eigenvector')
     sorted_betweenness = sorted(betweenness_dict.items(), key=operator.itemgetter(1), reverse=True)
-    descriptionSelf+="Three most central concepts in me are:"+ ' , '.join(sorted_betweenness[:3])+ "\n" 
+    descriptionSelf+="Three most central concepts in me are:"+ ' , '.join(elt[0] for elt in sorted_betweenness[:3])+ "\n"
     #Could add other properties>>>
     #Community detection within Self: with modularity, different clusterm Clustered Self etc. >>>
     print(descriptionSelf)
@@ -344,6 +344,3 @@ def drawGraph(G):
     #Show Image
     img=Image.open('./workshop/data/selfGraph.png')
     img.show()
-
-
-

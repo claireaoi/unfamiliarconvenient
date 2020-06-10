@@ -3,13 +3,13 @@
 
 
 ######Description############
-#  
+#
 # Main Script for the Interaction between you and your voice assistant
 #
 ######About############
 # This script was created for the workshop Unfamiliar Virtual Convenient - Growing your Voice Assistant
 # led by Vytautas Jankauskas and Claire Glanois through School of Machines, Make & believe, in spring 2020.
-# 
+#
 # Feel free to tune, or reshape it according to your project.
 
 
@@ -22,7 +22,7 @@ import numpy as np
 import random
 import re
 #Import for NLP
-import nltk 
+import nltk
 from nltk.corpus import words, wordnet
 from nltk.stem.wordnet import WordNetLemmatizer
 import urllib.request
@@ -42,72 +42,65 @@ VABla=""
 global savedBla
 savedBla=""
 
-###IMPORT other scripts
-import coreQuest
+# Initialise Mycroft Message Bus
+client = MessageBusClient()
+
+print("\n")
+print('Setting up client to connect to a local mycroft instance. ')
+print("\n")
+print("=======================================================")
+print('Human, please say something after you see ~~Connected~~')
+print("=======================================================")
+print("\n")
 
 #***********************************************************************PRELIMINARIES*************************************************************************
 
-def record_human_utterance(message):
+def record_human_utterance(message, ifEvolve=True):
     """
         Record utterance of human to a string.
     """
     humanBla = str(message.data.get('utterances')[0])
     print(f'Human said "{humanBla}"')
 
-def record_VA_utterance(message):
+    if ifEvolve:
+        with open('./workshop/data/whatVAHeard.txt', "a") as f:#Add it to conversation historics
+            f.write(humanBla + ". ")
+            print("Recorded Human")
+
+
+def record_VA_utterance(message, ifEvolve=True):
     """
         Record utterance of what the VA say
     """
-    print('Mycroft said "{}"'.format(VABla))
-    VABla = str(message.data.get('utterances')[0]) 
+    VABla = message.data.get('utterance')
+    print('VA said "{}"'.format(VABla))
 
-#Mycroft init
-print('Setting up client to connect to a local mycroft instance. ')
-client = MessageBusClient()
-print('Conversation may start.')
-client.on('recognizer_loop:utterance', record_human_utterance)
-wait_while_speaking() #wait for Mycroft to finish speaking. Useless now, but will be helpful later
-client.run_forever()
+    if ifEvolve and len(VABla)>keepThreshold:
+        with open('./workshop/data/whatVAHeard.txt', "a") as f:#Add it to conversation historics
+            f.write(VABla + ". ")
+            print("Recorded VA")
 
 #***********************************************************************MAIN INTERACTION*************************************************************************
 
 
-def interactLoop(ifEvolve=True):
+def interactLoop():
     """
-        One interaction Loop with the VA.
+        Interaction with the VA
     """
+
     #(0) Catch what the human is saying
     client.on('recognizer_loop:utterance', record_human_utterance)
-
     #(1) Catch what the VA is answering
     client.on('speak', record_VA_utterance) #recording the VA bla is given as a handler for speak message.
-
+    # wait while Mycroft is speaking
+    #wait_while_speaking()
     #(2) ifEvolve, the VA records what has been said to later grow from it.
-    if ifEvole:
-        savedBla=humanBla
-        if len(VABla)>keepThreshold:
-            savedBla+=" /n"+ VABla #If above the threshold, add VABla o the savedBla too
-        with open('./workshop/data/whatVAHeard.txt', "a") as f:#Add it to conversation historics
-           f.write(savedBla)
 
-
-def interact(ifEvolve=True):
-    """
-        Interaction with the VA, running until touch ´q´pressed.
-    """
-    loopCount=0
-    #Interact until press key 'q' on keyboard:
-    while not keyboard.is_pressed('q'):
-        loopCount+=1
-        print('Interaction n° "{}" begins.'.format(loopCount))
-        interactLoop(ifEvolve)
-
-    print('Human ended interaction.')
-
+    client.run_forever()
 
 
 #***********************************************************************END*************************************************************************
 
 #Direct Launch Interact
 if __name__ == '__main__':
-    fire.Fire(interact)
+    fire.Fire(interactLoop)

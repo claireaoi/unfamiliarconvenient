@@ -3,13 +3,13 @@
 
 
 ######Description############
-#  
+#
 # FallBack Skill where the VA do ML drifts, from a gpt-2 model, and the parameters registered in parametersDrift.py
 #
 ######About############
 # This script was created for the workshop Unfamiliar Virtual Convenient - Growing your Voice Assistant
 # led by Vytautas Jankauskas and Claire Glanois through School of Machines, Make & believe, in spring 2020.
-# 
+#
 # Feel free to tune, or reshape it according to your project.
 
 #**********************************************************************PARAMETERS for the ML Drift***************************************************************************
@@ -21,13 +21,13 @@ nDrift=1 #number of ML Drifts (successive generation can be triggered)
 
 ######Classic gpt-2 parameters:
 #More parameters are available and more detail about gpt-2 parameters can be found here: https://huggingface.co/blog/how-to-generate
-lengthDrift=200 #Maximum length of the generated answer, counted in character
-temperature = 1.0 #temperature. A classic parameter for language models. Increase the likelihood of high probability words and decreasing the likelihood of low probability words) by lowering the temperature and conversely.
+lengthDrift= 90 #Maximum length of the generated answer, counted in character
+temperature = 0.9 #temperature. A classic parameter for language models. Increase the likelihood of high probability words and decreasing the likelihood of low probability words) by lowering the temperature and conversely.
 repetition_penalty = 2 #Repetition Penalty drift
 randomMode= True #if decide randomize moods
 defaultMode='neutral' #If not, here is the mode chosen
 
-######## To slightly influence the gpt-2 outcome, so-called 'Mode'. 
+######## To slightly influence the gpt-2 outcome, so-called 'Mode'.
 #Below are only saturated example for better illustration. But you can tune them
 #Possible Modes for the ML Drift, with their probabilities.
 #Keeping the category neutral as such, with an empty string only, enable have the possibility of a neutral Mode, so unaltered ML drift.
@@ -61,10 +61,20 @@ from transformers import GPT2Tokenizer, GPT2LMHeadModel
 
 #For NLP
 import nltk
+nltk.download('punkt')
+nltk.download('wordnet')
+nltk.download('wordnet_ic')
+
 from nltk import word_tokenize, sent_tokenize, pos_tag
 from nltk.corpus import wordnet
 from nltk.stem.wordnet import WordNetLemmatizer
 lemmatizer = WordNetLemmatizer()
+
+global maxNonAlpha
+maxNonAlpha=5
+
+global maxRatio
+maxRatio=0.3
 
 #***********************************************************************PRELIMINARIES***************************************************************************
 
@@ -82,26 +92,26 @@ def alphabetRatio(inputString):
     return ratio, count
 
 
-def filterText(blabla, maxNonAlpha=maxNonAlpha , maxRatio=maxRatio):
+def filterText(blabla, maxNonAlpha, maxRatio):
     """
         Filter a text: remove sentences with higher non alphabetic number of character than the indicated max.
        Remove sentence with higher non alphabetical character ratio too than the indicated one.
        Output: Filtered text with the filteredRatio (between 0 and 1) measuring the amount of text which remains.
 
-       NB: Filtering procedures are a very specialised matter, and depend of the outcome you want to have. 
-       You could check repetition of characters, or too long words. 
+       NB: Filtering procedures are a very specialised matter, and depend of the outcome you want to have.
+       You could check repetition of characters, or too long words.
        Or even filter any sentence which does not make gramatical sense (yet, this may be too strong criteria).
        You can filter also unrecognised words (yet depend if you have proper noun), etc.
     """
     sentences=nltk.tokenize.sent_tokenize(blabla)
     filtered_bla=""
-    for sentence in sentences:
+    for i, sentence in enumerate(sentences):
         ratio, count=alphabetRatio(sentence) #ratio non letter elements
-        if len(sentence)>3 and ratio<maxRatio and count<maxNonAlpha:   #Test if not to many symbol and grammar ok
+        if len(sentence)>3 and ratio<maxRatio and count<maxNonAlpha and i<len(sentences)-1:   #Test if not to many symbols and grammar ok
                 filtered_bla+=sentence
-    filteredRatio = len(filtered_bla)/len(blabla) #. Ideally wish it close to 1 
+    filteredRatio = len(filtered_bla)/len(blabla) #. Ideally it's close to 1
     print(filtered_bla)
-    return filtered_bla, filteredRatio
+    return filtered_bla
 
 
 #***********************************************************************MAIN CLASS***************************************************************************
@@ -115,22 +125,22 @@ class MLdriftFallback(FallbackSkill):
         self.moodySeed=""
         # Initialize machine learning
         self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-        if self.finetuned_ML_model:
-            self.model = GPT2LMHeadModel.from_pretrained(path_finetuned_ML_model) 
+        if finetuned_ML_model:
+            self.model = GPT2LMHeadModel.from_pretrained(path_finetuned_ML_model)
         else:
             self.model=GPT2LMHeadModel.from_pretrained("gpt2")
 
 
     def initialize(self):
         """
-            Registers the fallback handler. 
-            The second Argument is the priority associated to the request. 
+            Registers the fallback handler.
+            The second Argument is the priority associated to the request.
             Lower is higher priority. But number 1-4 are bypassing other skills.
         """
         self.register_fallback(self.handle_MLdrift, 6)
         # Could register several handle
 
-   
+
     def pickMoodySeed(self):
         """
            Choose a seed to potentially add as contaxt for the gpt-2 Drift
@@ -156,12 +166,16 @@ class MLdriftFallback(FallbackSkill):
         process = self.tokenizer.encode(blabla, return_tensors = "pt")
         generator = self.model.generate(process, max_length = lengthDrift, temperature = temperature, repetition_penalty = repetition_penalty)
         drift = self.tokenizer.decode(generator.tolist()[0])
-        print(drift)
 
-        #(3) Filter the Drift. Here a small filtering procedure. 
+        i=0
+        while i < 1:
+            drift = drift.replace(str(blabla), "")
+            i+=1
+
+        #(3) Filter the Drift. Here a small filtering procedure.
         #Yet you are free to change the parameters, make it your own, by pass this step (comment out)
-        filtered_drift=filtering.filterText(drift, maxNonAlpha=15, maxRatio=0.3)
-        
+        filtered_drift=filterText(drift, maxNonAlpha, maxRatio)
+
         #(4) Say the drift out loud
         self.speak(filtered_drift)
 
