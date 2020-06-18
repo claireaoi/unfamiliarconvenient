@@ -200,7 +200,6 @@ class MLdriftFallback(FallbackSkill):
 
         return True
 
-
     #the Skill creator must make sure the skill handler is removed when the Skill is shutdown by the system.
     def shutdown(self):
         """

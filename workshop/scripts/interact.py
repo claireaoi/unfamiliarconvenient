@@ -13,8 +13,12 @@
 # Feel free to tune, or reshape it according to your project.
 
 
-#***********************************************************************INITIALIZATION***************************************************************************
+#***********************************************************************PARAMETERS***************************************************************************
 keepThreshold=50
+ifEvolve=True
+
+
+#***********************************************************************INITIALIZATION***************************************************************************
 
 ###IMPORT libraries
 import fire
@@ -55,7 +59,7 @@ print("\n")
 
 #***********************************************************************PRELIMINARIES*************************************************************************
 
-def record_human_utterance(message, ifEvolve=True):
+def record_human_utterance(message, ifEvolve=ifEvolve):
     """
         Record utterance of human to a string.
     """
@@ -68,7 +72,7 @@ def record_human_utterance(message, ifEvolve=True):
             print("Recorded Human")
 
 
-def record_VA_utterance(message, ifEvolve=True):
+def record_VA_utterance(message, ifEvolve=ifEvolve):
     """
         Record utterance of what the VA say
     """
