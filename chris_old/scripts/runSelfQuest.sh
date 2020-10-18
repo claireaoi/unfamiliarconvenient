@@ -10,9 +10,9 @@ python3 ./chris/scripts/selfQuest.py \
 --firstTime=False \
 --nDrift=0 \
 --lengthML=100 \
---nSimMax=50 \
---nSearch=100 \
+--n_search_sim_concept=50 \
+--n_search_new_concept=100 \
 --lengthWalk=10 \
 --walkNetwork=False \
---audibleSelfQuest=False \
+--audible_selfquest=False \
 --visualizeGraph=True

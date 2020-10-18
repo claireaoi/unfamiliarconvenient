@@ -1,202 +1,248 @@
+# !/usr/local/bin/python3
+# -*- coding: utf-8 -*-
 
 
-#Main Script for the Interaction between you and your voice assistant
+######Description############
+#
+# Main Script for the Interaction between you and your voice assistant
+#
+######About############
 
 
+#***********************************************************************PARAMETERS***************************************************************************
+global keepThreshold
+keepThreshold=50
+global n_search_new_concept
+n_search_new_concept=10 #  When look for words bounded to a certain number to avoid too slow. (Here, bound on found wikipediable word!).
+global n_search_sim_concept
+n_search_sim_concept=30 # when compare for words in self, this is a max number look for
+audible_selfquest=False #TODO: Remove this parameter
+global threshold_similarity
+threshold_similarity=0.4 # threshold when to consider 2 concepts as similar
+#TODO: Implement that this threshold vary through life
+global life_time
+life_time=0
 
-#***********************************************************************CUSTOMIZATION***************************************************************************
-wakeUpWord="Christopher, "
-
-#PARAMETERS of the trigger
-customTriggers=dict()
-customTriggers["audioRecord"]=[False, "isCloseTo", ["I feel being listened to."]]
-customTriggers["audioPlay"]=[False, "isCloseTo", ["Let me hear."]]
-customTriggers["toRemember"]=[False, "beginsBy", ["I wonder "]] #would we evolve into having a third arm one day? OR setReminder?
-customTriggers["remember"]=[False, "isCloseTo", ["Remember something."]] #
-customTriggers["laugh"]=[False, "isCloseTo", ["I'm free.", "I love you."]]
-customTriggers["DuckDuckGo"]=[True, "beginsBy",["Why", "How"]] #how do i twerk? Why people google?
-customTriggers["Wikipedia"]=[True, "beginsByCut", ["I know about "]] #I know about ... #Special case, as will cut out I know about...
-
-
-moodSeeds=dict()
-moodSeeds["curious"]=["Why are they", "Why do they", "How could we", "I wonder if", "I wonder how", "Why are there still", "What should we think of", "Is there something like"]
-moodSeeds["confrontational"]=["Maybe not.", "Yet, I feel this is wrong. ", "I would argue against this.", "I would prefer not to.", "What if this is bullshit?", "I don't believe in this. Listen,"]
-moodSeeds["thrilled"]=["Amazing.", "That is wonderful.", "How beautiful is this.", "That is incredible."]
-moodSeeds["emotional"]=["It makes me feel", "I feel like"]
-moodSeeds["appreciative"]=["Let us appreciate how", "Let us contemplate the", "Now, let us breathe and take a moment for", "Let us welcome the", "Let us appreciate what", "Instead of opposing, we shoud embrace", "I would like to thank the world for what"]
-moodSeeds["thrilled"]=["Amazing.", "That is wonderful.", "How beautiful is this.", "That is incredible."]
-moodSeeds["neutral"]=[""]
-
-#Randomize the Moods:
-probaMood=dict()
-probaMood["curious"]=0.2
-probaMood["confrontational"]=0.2
-probaMood["thrilled"]=0.1
-probaMood["emotional"]=0.1
-probaMood["appreciative"]=0.1
-probaMood["thrilled"]=0.1
-probaMood["neutral"]=0.2
-
+own_ML_model=True
+path_ML_model='./chris/models/gpt-2'
+global temperature
+temperature=1.0 #for ML model #TODO: Make it evolve
 #***********************************************************************INITIALIZATION***************************************************************************
+
 
 ###IMPORT libraries
 import fire
 import numpy as np
 import random
 import re
-import nltk #For NLP
+#Import for NLP
+import nltk
 from nltk.corpus import words, wordnet
 from nltk.stem.wordnet import WordNetLemmatizer
 import urllib.request
 from nltk import word_tokenize, sent_tokenize, pos_tag
 import keyboard  # using module keyboard
-
-###IMPORT other scripts
-import core #Main script, with the different procedures
-import visualize as vis #to visualize the selfGraph
 #Import for Mycroft
 import os.path
 from os import path
 from mycroft_bus_client import MessageBusClient, Message
 from mycroft.audio import wait_while_speaking
 
-###PARAMETERS
-mycroftTriggers=dict()
-mycroftTriggers["audioRecord"]=wakeUpWord+"start recording for 2 minutes."
-mycroftTriggers["audioPlay"]=wakeUpWord+"play the recording."
-mycroftTriggers["remember"]=wakeUpWord+"what did you remember?"
-mycroftTriggers["laugh"]=wakeUpWord+"random laughter."
-mycroftTriggers["toRemember"]=wakeUpWord+"remember "
-mycroftTriggers["DuckDuckGo"]=wakeUpWord
-mycroftTriggers["Wikipedia"]=wakeUpWord+"tell me about "
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
 
-lastHumanBla="I like trees. Trees are green. They can burn. I can burn too. I'm free. "
+
+#Global variables
+global human_bla
+human_bla=""
+global VA_bla
+VA_bla=""
+global savedBla
+savedBla=""
+
+###IMPORT other scripts
+import coreQuest
+import scraper
+
+print("\n")
+print('Setting up client to connect to a local mycroft instance. ')
+print("\n")
+
+# Initialise Mycroft Message Bus
+client = MessageBusClient()
+
+#client.run_in_thread()#NEED THIS ?
+
+print("=======================================================")
+print('Human, please say something after you see ~~Connected~~')
+print("=======================================================")
+print("\n")
 
 #***********************************************************************PRELIMINARIES*************************************************************************
 
-#Mycroft init
-print('Setting up client to connect to a local mycroft instance. ')
-client = MessageBusClient()
-print('Conversation may start.')
-client.on('recognizer_loop:utterance', record_human_utterance)
-wait_while_speaking() #wait for Mycroft to finish speaking. Useless now, but will be helpful later
-client.run_forever()
+def record_human_utterance(message, ifEvolve=True):
+    """
+        Record utterance of human to a string.
+    """
+    human_bla = str(message.data.get('utterances')[0])
+    print(f'Human said "{human_bla}"')
 
-#***********************************************************************PROCEDURES*************************************************************************
-
-#Return the appropriate trigger along what has listened to.
-def triggerSkill(sentence):
-    trigger=""
-    answer=""
-    for triggerName in customTriggers.keys():
-        triggers=customTriggers[triggerName][2]
-        modeTrigger=customTriggers[triggerName][1]
-        ifSave=customTriggers[triggerName][0]
-        if modeTrigger=="beginsByCut":
-            begin, cutSentence=core.beginsByCut(sentence,triggers)
-            if begin:
-                trigger=mycroftTriggers[triggerName]+cutSentence.lower()
-        elif modeTrigger=="isCloseTo" and core.isCloseTo(sentence,triggers):
-            trigger=mycroftTriggers[triggerName]
-        elif modeTrigger=="beginsBy" and core.beginsBy(sentence,triggers):
-            trigger=mycroftTriggers[triggerName]+sentence.lower()
-    #If one trigger has been activated
-    if not trigger=="":
-        answer=core.askChris(trigger)
-        print("Answer", answer)
-    return trigger, answer, ifSave
-
-def trigger(blabla):
-    trigger=""
-    answer=""
-    alreadyTriggered=False #Keep track as only trigger once per blabla. (?)
-    sentences=nltk.tokenize.sent_tokenize(blabla)    #Split into sentence. sentences= re.split('[?.!]', blabla)#re.split('! |. |?',lastbla)
-    for sentence in sentences: #look for each one if corresponds to trigger.
-        if not alreadyTriggered:
-            trigger, answer, ifSave=triggerSkill(sentence)
-            if not trigger=="":
-                alreadyTriggered=True
-    return trigger, answer, ifSave
+    if ifEvolve:
+        with open('./chris/data/heard.txt', "a") as f:#Add it to conversation historics
+            f.write(human_bla + ". ")
+            print("Recorded Human")
 
 
-def drifts(blabla, mood, lengthML, nMLDrift):
-    #Few Drift with GPT2, seeded with previous blabla, more an addendum depending on the mood.
-    seedML=blabla
-    if mood in moodSeeds.keys():
-        seedML+= " " + random.choice(moodSeeds[mood])
-    drift=core.MLDrift(seedML, lengthML) #with cleanup.
-    #drift= cs.cond_model(model_name='124M',seed=None, nsamples=2, batch_size=1,length=lengthML,temperature=1.0,top_k=0,top_p=1, models_dir='./chris/models', blabla = seedML)
+def record_VA_utterance(message, ifEvolve=True):
+    """
+        Record utterance of what the VA say
+    """
+    VA_bla = message.data.get('utterance')
+    print('VA said "{}"'.format(VA_bla))
+
+    if ifEvolve and len(VA_bla)>keepThreshold:
+        with open('./chris/data/heard.txt', "a") as f:#Add it to conversation historics
+            f.write(VA_bla + ". ")
+            print("Recorded VA")
+
+
+def gpt2(context, length_output, temperature): 
+    """
+        One ML drift with gpt-2, with a context. Printed and said by VA.
+    """
+    process = tokenizer.encode(context, return_tensors = "pt")
+    generator = model.generate(process, max_length = length_output, temperature = temperature, repetition_penalty = 2)
+    drift = tokenizer.decode(generator.tolist()[0])
     client.emit(Message('speak', data={'utterance': drift})) #does it say this or just will answer?
     print(drift)
-    if nMLDrift>1:
-        drift+=drifts(drift, mood, lengthML, nMLDrift-1)
     return drift
 
+def loadSelf(firstTime):
+    """
+        The VA loads his self_graph and memory as last saved. Or build it if first time.
+    """
+    if firstTime:
+        blabla=[]
+        phrase="Hatching self in process..."
+        print(phrase)
+        self_graph, memory, description=coreQuest.hatchSelf(n_search_new_concept)
+        print(description)
+        #if audible_selfquest:
+        #    client.emit(Message('speak', data={'utterance': phrase}))
+        #if audible_selfquest:
+        #    client.emit(Message('speak', data={'utterance': description}))
 
-#Record the utterance of the Human
-def record_human_utterance(message):
-    said = str(message.data.get('utterances')[0])
-    print(f'Human said "{said}"')#is the f normal????
-    lastHumanBla=said #record it in global variable
-    #with open('learnings.txt', 'a+') as t: #
-        #t.write(said + ' ')
+    else:
+        with open('./chris/data/selfgraph.txt', 'r') as json_file:
+            #self_graph = json.load(json_file)
+            self_graph = eval(json_file.read()) # which one RIGHT ?
+        with open('./chris/data/memory.txt', "r") as f:
+            memory=f.readlines() #List of words concepts he looked up
+        with open('./chris/data/heard.txt', "r") as f: #Last historics before Chris learned
+            heard=f.read().replace('\n', '')
+        phrase="I am here. Self Quest can begin."
+        print(phrase)
+        if audible_selfquest:
+            client.emit(Message('speak', data={'utterance': phrase}))
+  
+    return self_graph, memory, heard
 
 #***********************************************************************MAIN INTERACTION*************************************************************************
 
 
-def interactLoop(loopCount, rememberedStuff, mood='neutral', lengthML=200, nMLDrift=1, ifEvolve=True, randomizeMood=True):
-    print('Interaction n°', loopCount)
-    #(0) Catch what the human is saying
-    client.on('recognizer_loop:utterance', record_human_utterance)
-    print('Human said', humanBla)
+def interactLoop(length_opinion):
+    """
+        Interaction with the VA
+    """
+    #TODO: Check if first implementation
 
-    #(1) May Trigger a reaction, if something has been heard. If it is a bla, do it for each sentence if trigger something
-    trigger, answer, ifSave=trigger(humanBla)
-    #For some skills, may save what VA has said for the evolution.
-    if ifSave and not trigger=="":
-        savedBla=humanBla +" /n"+ answer
+    #(0) Preliminaries: load self graph etc
+    self_graph, memory, heard=loadSelf(firstTime, audible_selfquest, n_search_new_concept)
+    #Initialize machine learning model
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    if own_ML_model:
+        model=GPT2LMHeadModel.from_pretrained(path_ML_model)
     else:
-        savedBla=humanBla
+        model=GPT2LMHeadModel.from_pretrained("gpt2")
 
-    #(2) MLDrift, from what has been said, in a certain mood.
-    #If has chosen to randomize mood, pick a mood according probabilities given.
-    if randomizeMood:
-        mood=core.whichMood(probaMood)
-    blablaVA=drifts(humanBla, mood, lengthML, nMLDrift)
+    #(1) Catch what the human is saying. Has been recorded in human_bla
+    client.on('recognizer_loop:utterance', record_human_utterance)
+    
+    #(2) Chris ask listener to be patient.
+    client.emit(Message('speak', data={'utterance': "Hmmm. Let me think about this."}))
 
-    #(3) ifEvolve, the VA records what has been said to later grow from it
-    #Save the selfGraph and Update the files at the end of the interaction (the text heard (to grow form it),the remember)
-    if ifEvole:
-        with open('./chris/data/whatVAHeard.txt', "a") as f:#Last historics before Chris learned
-           f.write(savedBla)
-        with open('./chris/data/whatVARemember.txt', "w") as f:
-            f.write("\n".join(rememberedStuff))
+    #(3) Chris extract one or two word from utterance
+    # Look at words for which exist wikipedia Page and not in self_graph nor in memory. 
+    OKWikipedia, self_graph=coreQuest.extractWiki(heard, self_graph, memory, n_search_new_concept)#actually real n_search_new_concept may double because of composed words.
+    #TODO: Not only on wikipedia this extraction.
 
-    return savedBla
+    #(4) Pick one word from this list (if not empty) #TODO: Could try with another one after ?
+    #And look for similar concept in self graph.
+    no_new_concept=False
+    if OKWikipedia==[]:
+        no_new_concept=True #did not hear any new word
+    elif not firstTime:
+        new_concept=random.choice(OKWikipedia)
+        self_graph, if_added_concept, closer_concept, similarity_score=coreQuest.isSelf(self_graph, new_concept, n_search_sim_concept)
+
+    #(5-A) Has not find a new concept interesting him. Will Look about two self concepts online. or one ?
+    if no_new_concept or not if_added_concept:
+        client.emit(Message('speak', data={'utterance': "I am not interested by this question. "}))
+        self_concepts=self_graph.keys()#his self-graph
+        self_concept_1= random.choice(self_concepts) #PICK SOMETHING #TODO: Pick last one added with another one ?
+        self_concept_2=random.choice(self_concepts)
+        query= self_concept_1+ " "+self_concept_1 #Add something between two concept linking?
+        client.emit(Message('speak', data={'utterance': "But let me tell you what I am interested about."}))
+        interest="How " + self_concept_1+ " and "+ self_concept_2 + " come together ."
+        client.emit(Message('speak', data={'utterance': interest}))
+        scraped_data, extract=scraper.surf(query)
+    #(5-B) Has find a new concept interesting him. Will Look about it online. or one ?
+    else:
+        phrase="Hmmm. This is interesting. In wonder how it is related to "+ closer_concept
+        client.emit(Message('speak', data={'utterance': phrase}))
+        query=new_concept + " "+ closer_concept
+        scraped_data, extract=scraper.surf(query)
+    
+    #(6) Say a bit of the article about what found online
+    client.emit(Message('speak', data={'utterance': extract}))
+
+    #(7) Say his own opinion about it with his gpt-2 model
+    context= extract + "However, I personally think that "#TODO:Vary the words here
+    opinion=gpt2(context, length_opinion, temperature)#TODO:Vary the parameters like temperature, length_opinion
+    client.emit(Message('speak', data={'utterance': opinion}))
 
 
-def interact(mood='neutral', lengthML=200, nMLDrift=1, ifEvolve=True, randomizeMood=True, visualizeGraph=False):
-    loopCount=0
-    savedBla=""
-    #Load what VA remembered stuff.
-    with open('./chris/data/whatVARemember.txt', "r") as f:
-        rememberedStuff=f.readlines() #List of what he remembers
+    #(8) Ask: What do you think about it?
+    client.emit(Message('speak', data={'utterance': "What do you think about it ?"}))
 
-    #Interact until press key 'q' on keyboard:
-    while not keyboard.is_pressed('q'):
-        loopCount++
-        savedBla+=interactLoop(loopCount, rememberedStuff, mood, lengthML, nMLDrift, ifEvolve, randomizeMood)
+    #(9) Record what the human is answering into human_bla #TODO: should check this is not old human_bla
+    client.on('recognizer_loop:utterance', record_human_utterance)
 
-    print('Human ended interaction.')
 
-    #Visualise graph if specified.
-    if visualizeGraph:
-        vis.drawGraph()
-    return savedBla
+    #(10) Say 'noted'
+    client.emit(Message('speak', data={'utterance': "Noted."}))
+
+    #(11) Save data: human and scraped online. 
+    with open('./chris/data/heard_human.txt', "a") as f:
+        f.write(human_bla)
+    with open('./chris/data/heard_online.txt', "a") as f:
+        f.write(scraped_data)
+
+    #(12) Update the self_graph and the memory
+    with open('./chris/data/selfgraph.txt', 'w') as outfile:
+        json.dump(self_graph, outfile)
+
+    with open('./chris/data/memory.txt', "w") as f:
+        f.write("\n".join(memory))
+
+    #Catch what the VA is answering
+    #client.on('speak', record_VA_utterance) #recording the VA bla is given as a handler for speak message.
+    # wait while Mycroft is speaking
+    #wait_while_speaking()
+    #client.run_forever()
 
 
 #***********************************************************************END*************************************************************************
 
 #Direct Launch Interact
 if __name__ == '__main__':
-    fire.Fire(interact)
+    fire.Fire(interactLoop)
