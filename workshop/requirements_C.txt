@@ -19,7 +19,7 @@ convertdate==2.2.1
 cov-core==1.15.0
 coverage==4.5.4
 coveralls==1.8.2
-cryptography==2.9.2
+cryptography==3.2
 cucumber-tag-expressions==2.0.4
 cycler==0.10.0
 ddg3==0.6.6
