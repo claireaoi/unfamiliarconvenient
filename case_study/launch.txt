@@ -1,0 +1,5 @@
+cd mycroft-core
+source .venv/bin/activate
+export PYTHONIOENCODING=UTF-8
+./start-mycroft.sh all
+python3 ./case_study/scripts/interact.py

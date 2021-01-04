@@ -1,5 +1,7 @@
 
 
+
+
 def surf(query):
     scraped_data=""
     extract="blablblipblop"

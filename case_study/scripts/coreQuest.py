@@ -36,7 +36,7 @@ import urllib.request as ur
 
 #To visualize graph
 import networkx as nx #networkx need install the library: pip install networkx
-import pylab as plt
+import matplotlib.pylab as plot
 from networkx.drawing.nx_agraph import graphviz_layout, to_agraph
 import pygraphviz as pgv
 from PIL import Image
@@ -62,7 +62,7 @@ def hasNumbers(inputString):
 
 def disambiguationPage(word):
     """
-        Check if a word is a disambiguation Page on wikipedia
+        Check if a word is a disambiguation Pge on wikipedia
     """
     page=wikipedia.page(word)
     categories=page.categories
@@ -131,14 +131,14 @@ def extractWiki(blabla, self_graph, memory,  n_search_new_concept):
                         else:
                             OKWikipedia.append(duo)
                             counter+=1
-        print("New words to learn from", OKWipedia)
+        print("New words to learn from", OKWikipedia)
         return OKWikipedia, self_graph
 
 
 #***********************************************************************PROCEDURES to INIT GRAPH***************************************************************************
 
 
-def connectNodes(self_graph):
+def connectNodes(self_graph, threshold_similarity):
     """
        Build the Edges of a self_graph given
        Check if concepts in self_graph are related to each other.
@@ -180,19 +180,19 @@ def semanticSimilarity(word1, word2):
 
     return score
 
-def hatchSelf(n_search_new_concept):
+def hatchSelf(n_search_new_concept, threshold_similarity):
     """
          Hatch (build) the self Graph from hatchVA.txt
     """
     # (0) Load the Initial list of words to hatch the VA self_graph: in hatcHVA.txt
-    with open('./chris/data/hatchVA.txt') as f:
+    with open('./case_study/data/hatchVA.txt') as f:
         rawVA= ''.join(f.readlines())
 
     #(1) Extract wikipedia-ble words from these texts and put them in a waiting List, and start a self_graph which is a dictionnary in Python
     # For now, only with Wikipedia. Could add wiktionary.
     selfConcepts, voidGraph=extractWiki(rawVA, dict(), [], n_search_new_concept)
     #Record this in a text file
-    fileW = open("./chris/data/wiki.txt","w")
+    fileW = open("./case_study/data/wiki.txt","w")
     print('writing wiki files')
     fileW.writelines(elt + "\n" for elt in selfConcepts)
     fileW.close()
@@ -211,12 +211,12 @@ def hatchSelf(n_search_new_concept):
 
     ##(3) Build the connections within the Self: the edges of the Graph, from semantic similarity.
     #This step may take time, according the length of the list.
-    nEdge=connectNodes(self_graph)
+    nEdge=connectNodes(self_graph, threshold_similarity)
 
     #(4) Save it, in both selfbirth.txt and selfgraph.txtm to keep always initial graph in memory.
-    with open('./chris/data/selfbirth.txt', 'w') as outfile:
+    with open('./case_study/data/selfbirth.txt', 'w') as outfile:
         json.dump(self_graph, outfile)
-    with open('./chris/data/selfgraph.txt', 'w') as outfile:
+    with open('./case_study/data/selfgraph.txt', 'w') as outfile:
         json.dump(self_graph, outfile)
 
    #(5) init Memory as the list of keys. With as first element an index to keep track to where we are writing in the memory.
@@ -235,7 +235,7 @@ def hatchSelf(n_search_new_concept):
 #***********************************************************************PROCEDURES to GROW SELF***************************************************************************
 
 
-def isSelf(self_graph, word, n_search_sim_concept):
+def isSelf(self_graph, word, n_search_sim_concept, threshold_similarity):
     #Check if a word (not belonging to his self) is related to his self_graph.
     nSelf=len(list(self_graph.keys()))
     indices=random.sample(range(0, nSelf), min(n_search_sim_concept, nSelf)) #Generate random list of indices where will look for
@@ -338,7 +338,7 @@ def drawGraph(G):
     #Rendering via Graphviz. >>Draw Attributes!
     A.layout('dot')
     #Saving
-    A.draw('./chris/data/self_graph.png')
+    A.draw('./case_study/data/self_graph.png')
     #Show Image
-    img=Image.open('./chris/data/self_graph.png')
+    img=Image.open('./case_study/data/self_graph.png')
     img.show()
