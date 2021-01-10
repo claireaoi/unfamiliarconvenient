@@ -1,3 +1,7 @@
 .DS_Store
 */.DS_Store
-chris/models/124M
+
+case_study/fallback-MLdrift/gpt2/
+case_study/data/config.ini
+
+*.pyc

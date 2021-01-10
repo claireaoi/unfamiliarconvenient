@@ -1,7 +1,8 @@
 
 #!/usr/bin/env python3 # to use in terminal
 
-#TODO: IMPROVE TIME!
+#TODO: IMPROVE TIME! for extracting texts step mainlz
+#TODO: TO FILTER FOLLOWING TEXTS below page
 
 #**********************************************************************IMPORT**************************************************************************
 
@@ -211,6 +212,7 @@ def surf_google(query, minimum_char_one, minimum_char_all, maximum_char):
     ###(2) Extract texts part
     print("=======================================================")
     print("Extracting the texts")
+    #TODO: check if can accelerate this step
     extracts=extract_text(urls, minimum_char_one, minimum_char_all)
     #print(extracts)
     ###(3) Choose one extract
@@ -251,3 +253,13 @@ def surf_google(query, minimum_char_one, minimum_char_all, maximum_char):
         # snippet = search_item.get("snippet")
         # print("Description:", snippet)
         ## or for HTML snippet (bolded keywords) html_snippet = search_item.get("htmlSnippet")
+
+
+#TO FILTER FOLLOWING TEXTS
+""" Setting `pad_token_id` to `eos_token_id`:50256 for open-end generation.
+
+	Subscription Cart Footer
+	http://rechargepayments.com: v2
+	Updated: 2017/06/12
+
+ """

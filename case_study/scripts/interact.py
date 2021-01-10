@@ -12,6 +12,10 @@
 #TODO: USE OTHER THAN WIKIPEDIA FOR EXTRACTION ?
 #TODO: BEAM SEARCH for GPT2 ... check extract noty empty else always same result///
 #TODO: Option to end interaction properly
+#TODO: check different similar word pick for same word, often black box
+#TODO: SKILL PROGRAM
+#TODO: how do dialogue in mycroft skill, for several listener management
+#TODO: CHECK the saved files
 
 #***********************************************************************LIBRARY IMPORT***************************************************************************
 
@@ -39,6 +43,7 @@ from transformers import GPT2Tokenizer, GPT2LMHeadModel
 #Import of other scripts
 import coreQuest
 import scraper
+import time
 
 
 
@@ -62,7 +67,7 @@ temperature=1.0 #for ML model
 global length_opinion
 length_opinion=100
 global firstTime
-firstTime=True
+firstTime=False
 global ifEvolve
 ifEvolve=True
 global minimum_char_one_scrap
@@ -70,11 +75,16 @@ minimum_char_one_scrap=80
 global minimum_char_all_scrap
 minimum_char_all_scrap=400
 global maximum_char_scrap
-maximum_char_scrap=1500#CHECK CAN CHANGE>>>
+maximum_char_scrap=800#CHECK CAN CHANGE>>>
 global self_graph
 global memory
 global heard
 global self_data
+global begin_interaction_loop
+begin_interaction_loop=True#TODO: two boolean for ask opinioin too navoid intempestif declencher 
+global ask_human_opinion
+ask_human_opinion=False
+
 #Initialize machine learning model
 global tokenizer
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
@@ -83,6 +93,7 @@ if own_ML_model:
     model=GPT2LMHeadModel.from_pretrained(path_ML_model)
 else:
     model=GPT2LMHeadModel.from_pretrained("gpt2")
+
 
 
 #***********************************************************************PRELIMINARIES*************************************************************************    
@@ -113,42 +124,105 @@ def loadSelf(firstTime):
             #Dictionary with self_data
             self_data=json.load(json_file)
         lifetime=self_data["lifetime"]
-        phrase="I am here. My lifetime is "+ lifetime + " interactions."
+        phrase="I am here. My lifetime is "+ str(lifetime) + " interactions."
         print(phrase)
-        client.emit(Message('speak', data={'utterance': phrase}))
+        #client.emit(Message('speak', data={'utterance': phrase}))#cannot put before run forever ?
   
     return self_graph, memory, heard, self_data
 
-def interact_with_human(message):
-    """
-        Catch what the human has said, save it and launch an interaction loop.
-    """
-    human_bla = str(message.data.get('utterances')[0])
-    print(f'Human said "{human_bla}"')
+# def interact_with_human(message):
+#     """
+#         Catch what the human has said, save it and launch an interaction loop.
+#     """
+#     global begin_interaction_loop
+#     human_bla = str(message.data.get('utterances')[0])
+#     print(f'Human said "{human_bla}"')
+
+#     if ifEvolve:
+#         with open('./case_study/data/heard.txt', "a") as f:#Add it to conversation historics
+#             f.write(human_bla + ". ")
+#             print("Saved Human bla")
+
+#     begin_interaction_loop=False
     
-    if ifEvolve:
-        with open('./case_study/data/heard.txt', "a") as f:#Add it to conversation historics
-            f.write(human_bla + ". ")
-            print("Recorded Human")
-    
-    interact1(human_bla)
-    print("Interaction finished")
+#     interact1(human_bla)
 
 
-def ask_opinion_human(message):
+
+def interact_with_human_global(message):
     """
-       Catch the human answer, save it and go on the interaction loop.
     """
-    human_bla = str(message.data.get('utterances')[0])
-    print(f'Human said "{human_bla}"')
+    global begin_interaction_loop
+    global ask_human_opinion
+    if begin_interaction_loop and not ask_human_opinion:
+        begin_interaction_loop=False
+        human_bla = str(message.data.get('utterances')[0])
+        print(f'Human said "{human_bla}"')
+
+        if ifEvolve:
+            with open('./case_study/data/heard.txt', "a") as f:#Add it to conversation historics
+                f.write(human_bla + ". ")
+                print("Saved Human bla")
+        #LAUNCH INTERACT1
+        interact1(human_bla)
+
+    elif ask_human_opinion and not begin_interaction_loop:
+        ask_human_opinion=False
+        #TODO: TIME OUT IF HUMAN SAZ NOTHIN...
+        print("STEP 12=======================================================")
+        print("catched human opinion")
+        human_bla = str(message.data.get('utterances')[0])
+        print(f'Human said "{human_bla}"')
+        
+        if ifEvolve:
+            with open('./case_study/data/heard.txt', "a") as f:#Add it to conversation historics
+                f.write(human_bla + ". ")
+                print("Saved Human opinion")
+        #LAUNCH INTERACT2
+        interact2(human_bla)
+
+
+
+# def ask_opinion_human(message):
+#     """
+#        Catch the human answer, save it and go on the interaction loop.
+#     """
+#     print("STEP 12=======================================================")
+#     print("CATCHED HUMAN OPINION")
+#     human_bla = str(message.data.get('utterances')[0])
+#     print(f'Human said "{human_bla}"')
     
-    if ifEvolve:
-        with open('./case_study/data/heard.txt', "a") as f:#Add it to conversation historics
-            f.write(human_bla + ". ")
-            print("Recorded Human")
+#     if ifEvolve:
+#         with open('./case_study/data/heard.txt', "a") as f:#Add it to conversation historics
+#             f.write(human_bla + ". ")
+#             print("Saved Human opinion")
+#     global ask_human_opinion
+#     ask_human_opinion=False
     
-    interact2(human_bla)
-    print("Interaction finished")
+#     interact2(human_bla)
+
+
+# def catched_opinion(message):
+#     """
+#        Catch the human answer, save it and go on the interaction loop.
+#     """
+#     print("STEP 12=======================================================")
+#     global ask_human_opinion
+#     if message is None:
+#         print("DID NOT CATCHED ANY HUMAN OPINION")
+#         ask_human_opinion=False
+#         interact2("")#TODO> CHECK IF USE STR INTERACT CASE EMPTY STRING
+#     else:
+#         print("CATCHED HUMAN OPINION")
+#         human_bla = str(message.data.get('utterances')[0])
+#         print(f'Human said "{human_bla}"')
+        
+#         if ifEvolve:
+#             with open('./case_study/data/heard.txt', "a") as f:#Add it to conversation historics
+#                 f.write(human_bla + ". ")
+#                 print("Saved Human opinion")
+#         ask_human_opinion=False
+#         interact2(human_bla)
 
 
 def gpt2(context, length_output, temperature): 
@@ -175,11 +249,13 @@ def interact1(human_bla):
     global heard
     global self_data
     
-    #(1) Chris update its lifetime
+    #(1) Chris update its lifetime and save it
     print("=======================================================")
     print("Step 1 of Interaction Loop")
     print("=======================================================")
     self_data["lifetime"]+=1
+    with open('./case_study/data/selfdata.txt', 'w') as outfile:
+        json.dump(self_data, outfile)
 
     #(2) Chris ask listener to be patient.
     print("=======================================================")
@@ -204,11 +280,14 @@ def interact1(human_bla):
     no_new_concept=False
     if OKWikipedia==[]:
         no_new_concept=True #did not hear any new word
-    elif not firstTime:
+        print("Did not hear any new word interesting.")
+    else:
         new_concept=random.choice(OKWikipedia)
+        print("new concept", new_concept)
         self_graph, if_added_concept, closer_concept, similarity_score=coreQuest.isSelf(self_graph, new_concept, n_search_sim_concept,threshold_similarity)
-
-    print("Added the concept", if_added_concept)
+        print("Added the concept", if_added_concept)
+        print("closer concept", closer_concept)
+        print("similarity_score", similarity_score)#TODO: issue with this similarity score, is the last one not the one of the closer concept
     #(5-A) Has not find a new concept interesting him. Will Look about two self concepts online. or one ?
     print("=======================================================")
     print("step 5")
@@ -224,6 +303,7 @@ def interact1(human_bla):
         client.emit(Message('speak', data={'utterance': "But let me tell you what I am interested about."}))
         interest="How " + self_concept_1+ " and "+ self_concept_2 + " come together ."
         client.emit(Message('speak', data={'utterance': interest}))
+        print(interest)
         scraped_data, extract=scraper.surf_google(query, minimum_char_one_scrap, minimum_char_all_scrap, maximum_char_scrap)
     #(5-B) Has find a new concept interesting him. Will Look about it online. or one ?
     else:
@@ -244,16 +324,16 @@ def interact1(human_bla):
     print("=======================================================")
     with open('./case_study/data/heard_online.txt', "a") as f:
         #TODO: Take only one extract or all?#scraped_data or just extract
-        f.write(scraped_data)
+        for text in scraped_data:
+            f.write(text)
 
-    #(8)Update the self_graph and the memory and the self_data
+    #(8)Update the self_graph and the memory 
     print("=======================================================")
     print("step 8")
     print("=======================================================")
     with open('./case_study/data/selfgraph.txt', 'w') as outfile:
         json.dump(self_graph, outfile)
-    with open('./case_study/data/selfdata.txt', 'w') as outfile:
-        json.dump(self_data, outfile)
+
     with open('./case_study/data/memory.txt', "w") as f:
         f.write("\n".join(memory))
 
@@ -270,14 +350,21 @@ def interact1(human_bla):
     print("=======================================================")
     print("step 10")
     print("=======================================================")
+    message=Message('speak', data={'utterance': "What do you think about it ?"})
     client.emit(Message('speak', data={'utterance': "What do you think about it ?"}))
-
+    
 
     #(11) Record what the human is answering into human_bla and relaunch interaction
     print("=======================================================")
-    print("step 11")
+    print("step 11....waiting for human opinion")
     print("=======================================================")
-    client.on('recognizer_loop:utterance', ask_opinion_human)
+    global ask_human_opinion
+    ask_human_opinion=True
+    
+    #message_out=client.wait_for_response(message, reply_type=None, timeout=10)
+    #catched_opinion(message_out)
+    #client.on('recognizer_loop:utterance', ask_opinion_human)
+
 
 
 def interact2(human_bla):
@@ -288,15 +375,18 @@ def interact2(human_bla):
     #TODO: Do something with human opinion here ? Drift with it ?
     #(1) Say 'noted'
     print("=======================================================")
-    print("step 12 -END INTERACTION LOOP")
+    print("END INTERACTION LOOP")
     client.emit(Message('speak', data={'utterance': "Noted."})) #TODO: VARY MESSAGE THERE
-
+    time.sleep(3)
     #(2) RELAUNCH THE INITIAL INTERACTION (this happens in LOOP)
     print("=======================================================")
     print("LAUNCH NEW INTERACTION LOOP")
     # Catch what the human is saying. Has been recorded in human_bla
     print("listening...")
-    client.on('recognizer_loop:utterance', interact_with_human)
+    global begin_interaction_loop
+    begin_interaction_loop=True
+    #client.on('recognizer_loop:utterance', interact_with_human)#not if forever
+
 
 
 
@@ -309,7 +399,7 @@ print("\n")
 
 ####### (0) Initialise Mycroft Message Bus
 client = MessageBusClient()
-    
+
 print("=======================================================")
 print('Human, please say something after you see ~~Connected~~')
 print("=======================================================")
@@ -319,13 +409,23 @@ print("\n")
 print("=======================================================")
 print("Preliminaries-load Self")
 print("=======================================================")
+
 self_graph, memory, heard, self_data=loadSelf(firstTime)#
 
 #########(2) LAUNCH THE INTERACTION (running in loop)
 print("listening...")
-client.on('recognizer_loop:utterance', interact_with_human)
+#client.run_in_thread() #here require loop again
 
-client.run_forever()
+
+client.on('recognizer_loop:utterance', interact_with_human_global) 
+
+""" while True:
+    if begin_interaction_loop and not ask_human_opinion:#double security. needed ?
+        client.on('recognizer_loop:utterance', interact_with_human) """
+    #elif ask_human_opinion and not begin_interaction_loop:
+        #client.on('recognizer_loop:utterance', ask_human_opinion)
+        
+client.run_forever()#beware here keep cathing stuff ever and ever
 
 
 #Direct Launch Interact
