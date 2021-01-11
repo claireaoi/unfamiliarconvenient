@@ -165,9 +165,21 @@ class MLdriftFallback(FallbackSkill):
         blabla=blabla+ " " + self.moodySeed
 
         #(2) ML Drift according to parameters
+        #BEAM
+        #model.generate(input_ids,max_length=50,num_beams=5,no_repeat_ngram_size=2, early_stopping=True)
+        #OR **top_k** – (optional) int The number of highest probability vocabulary tokens to keep for top-k-filtering. Between 1 and infinity. Default to 50.
+        #model.generate(input_ids, do_sample=True, max_length=50, top_k=50) 
+        #also num_return_sequences=3
+        #OR **top_p** – (optional) float The cumulative probability of parameter highest probability vocabulary tokens to keep for nucleus sampling. Must be between 0 and 1. Default to 1.
+        #model.generate(input_ids, do_sample=True, max_length=50, top_k=0, top_p=0.95, num_return_sequences=3)
+        #NORMAL_         #generator = self.model.generate(process, max_length = lengthDrift, temperature = temperature, repetition_penalty = repetition_penalty)
+
+        #num_beams: 
         process = self.tokenizer.encode(blabla, return_tensors = "pt")
-        generator = self.model.generate(process, max_length = lengthDrift, temperature = temperature, repetition_penalty = repetition_penalty)
+        generator = self.model.generate(process, max_length = lengthDrift, temperature = temperature, repetition_penalty = repetition_penalty, do_sample=True, top_k=50)
         drift = self.tokenizer.decode(generator.tolist()[0])
+
+
 
         i=0
         while i < 1:

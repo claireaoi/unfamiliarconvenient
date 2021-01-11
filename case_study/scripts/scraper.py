@@ -2,7 +2,10 @@
 #!/usr/bin/env python3 # to use in terminal
 
 #TODO: IMPROVE TIME! for extracting texts step mainlz
-#TODO: TO FILTER FOLLOWING TEXTS below page
+#TODO: TO FILTER FOLLOWING TEXTS below page. library check if make sense
+#remove link if only a link, not in a sentence?
+#newspaper as parser?
+#RUN NEW TESTS. 
 
 #**********************************************************************IMPORT**************************************************************************
 
@@ -46,7 +49,7 @@ blacklist = [
 	'button',
     'cite',
 	'style',
-	'title',#, okremove ?
+	'title',
 	'form',#, okremove ?
 	'label',#, okremove ?
 	'span', #, okremove ?
@@ -213,20 +216,20 @@ def surf_google(query, minimum_char_one, minimum_char_all, maximum_char):
     print("=======================================================")
     print("Extracting the texts")
     #TODO: check if can accelerate this step
-    extracts=extract_text(urls, minimum_char_one, minimum_char_all)
+    scraped_data=extract_text(urls, minimum_char_one, minimum_char_all)
     #print(extracts)
     ###(3) Choose one extract
     print("=======================================================")
     print("Choosing one Extract")
-    chosen_extract=choose_extract(extracts)
-    #print(chosen_extract)
+    chosen_extract=choose_extract(scraped_data)
+    #print(chosen_extract)#TODO: FILTER?
     ###(4) Cut extract
     print("=======================================================")
     print("Final Extract")
     final_extract=cut_extract(chosen_extract, maximum_char)
     print(final_extract)
    
-    return extracts, final_extract
+    return scraped_data, final_extract
 
 ###LAUNCH IT to try. TEST SAVE
 #surf_google("Coffee", minimum_char_one, minimum_char_all, maximum_char)
@@ -263,3 +266,63 @@ def surf_google(query, minimum_char_one, minimum_char_all, maximum_char):
 	Updated: 2017/06/12
 
  """
+#TODO: CHECK FILTERING FOR THIS
+ #age, including during development in the womb, during childhood, and during adulthood (13). When a clitoris size is large enough to be considered abnormal, this is called   and the clitoris are related in structure t
+
+                                    #  Hats & Caps
+                                 
+                                    #             Beanies & Winter Hats
+                                             
+                                    # Hair Accessories
+                                 
+                                    #             Headbands
+                                             
+                                    #             Fascinators & Mini Hats
+                                             
+                                    #             Wreaths & Tiaras
+                                             
+                                    # Sunglasses & Eyewear
+                                 
+                                    # Scarves & Wraps
+                                 
+                                    # Belts & Suspenders
+                                 
+                                    # Keychains & Lanyards
+
+
+                 
+                    # Clit Clip Emoji Humor Nonpiercing Clit Jewelry Fake VCH Piercing Under The Hoode Intimate Jewelry and Gifts Stud Button Hugger Emoticons
+                 
+                    # Clit Clip Fake VCH Piercing Clip On Clit Jewelry Large Ebony Heart Button Hugger Clit Stimulation Under The Hoode
+                 
+                    # Clit Clip Fake VCH Piercing Clip On Clit Jewelry Copper Sun Button Hugger Clit Stimulation Under The Hoode
+                 
+                    # Clit Clip Fake VCH Piercing Clit Jewelry Shimmering Pink Stud Button Hugger Under The Hoode
+                 
+                    # Clit Clip Fake VCH Piercing Clip On Clit Jewelry Faux Turquoise Medallion Stud Button Hugger Clit Stimulation Under The Hoode
+                 
+                    # Clit Clip Fake VCH Piercing Clip On Clit Jewelry Bronze Floral Button Hugger Clit Stimulation Under The Hoode
+                 
+                    # Clit Clip Fake VCH Piercing Clip On Clit Jewelry Hibiscus Charm Button Hugger Clit Stimulation Under The Hoode 
+# =============================================Content Header========================================== 
+# =============================================Title Bar========================================== 
+# =============================================Content Body========================================== 
+
+# © Copyright 2021 Variety Media, LLC, a subsidiary of Penske Business Media, LLC. Variety and the Flying V logos are trademarks of Variety Media, LLC.  
+
+#                                                                 Create                                                                                                                             Make social videos in an instant: use custom templates to tell the right story for your business. 
+#                                                                 Screen Recorder                                                                                                                             
+#                                                                 Live Streaming                                                                                                                             
+#                                                                 Enterprise                                                                                                                             Get your team aligned with all the tools you need on one secure, reliable video platform. 
+#                                         Log in                                     
+#                                         Join                                     
+#                                                 Upload                                                                                             
+#                                                 Create a video                                                                                             
+#                                                 Go live                                                                                             
+#                                 Distribution & Marketing                             
+#                                 Hosting & Management                             Make social videos in an instant: use custom templates to tell the right story for your business. Get your team aligned with all the tools you need on one secure, reliable video platform. 
+#                                 Creative Professionals                             
+#                                                                 Pricing                                                                                             Search                              
+
+#future. Accuracy and availability may vary. The authoritative record of NPR’s programming is the audio record.  END ID="NEWSLETTER-ACQUISITION-CALLOUT-DATA" DATA-NEWSLETTER="{&QUOT;NEWSLETTERID&QUOT;:&QUOT;BREAKING-NEWS&QUOT;,&QUOT;TITLE&QUOT;:&QUOT;BREAKING NEWS ALERTS&QUOT;,&QUOT;MARKETINGHEADER&QUOT;:&QUOT;SIGN UP FOR BREAKING NEWS ALERTS&QUOT;,&QUOT;FREQUENCY&QUOT;:&QUOT;&QUOT;,&QUOT;SHORTDESCRIPTION&QUOT;:&QUOT;STAY ON TOP OF THE LATEST STORIES AND DEVELOPMENTS, SENT WHEN NEWS BREAKS.&QUOT;,&QUOT;STICKYDESCRIPTION&QUOT;:&QUOT;SIGN UP FOR BREAKING NEWS ALERTS TO STAY ON TOP OF THE LATEST STORIES AND DEVELOPMENTS.&QUOT;,&QUOT;CONTENTIMAGE&QUOT;:&QUOT;HTTPS:\/\/MEDIA.NPR.ORG\/ASSETS\/IMG\/2018\/08\/03\/NEWSLETTERS\/BREAKING_NEWS.PNG&QUOT;,&QUOT;STATICMARKUPDIR&QUOT;:&QUOT; &QUOT;,&QUOT;BRANDINGDIR&QUOT;:&QUOT; &QUOT;,&QUOT;BRANDINGLINK&QUOT;:&QUOT; &QUOT;,&QUOT;ORGANIZATIONID&QUOT;:1,&QUOT;RECAPTCHASITEKEY&QUOT;:&QUOT;6LFD6CYUAAAAAIBEUEKWZ9KCJF4UYLFTU7NWNAEK&QUOT;}"   END ID="END-OF-STORY-RECOMMENDATIONS-MOUNT" CLASS="RECOMMENDED-STORIES" ARIA-LABEL="RECOMMENDED STORIES"   
+

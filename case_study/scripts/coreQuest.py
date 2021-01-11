@@ -70,7 +70,7 @@ def disambiguationPage(word):
     for title in categories.keys():#dictionary
         if title=="Category:Disambiguation pages":
             disambPage=True
-    print(str(page) + " is a disambiguation Page on Wikipedia: " + str(disambPage))
+    #print(str(page) + " is a disambiguation Page on Wikipedia: " + str(disambPage))
     return disambPage
 
 excluded=['a', 'the', 'an', 'I', 'to', 'are', 'not', 'for', 'best','you', 'they', 'she', 'he', 'if', 'me', 'on', 'is', 'are', 'them', 'why', 'per', 'out', 'with', 'by'] #exclude these words to be looked upon
@@ -87,9 +87,9 @@ def extractWiki(blabla, self_graph, memory,  n_search_new_concept):
         return OKWikipedia, self_graph
     else:
         counter=0#count words added
-        print(blabla)
-        print(word_tokenize(blabla))
-        print(nltk.pos_tag(word_tokenize(blabla)))
+        #print(blabla)
+        #print(word_tokenize(blabla))
+        #print(nltk.pos_tag(word_tokenize(blabla)))
         for word, pos in nltk.pos_tag(word_tokenize(blabla)):
             if counter<n_search_new_concept:#Stop once has enough words
                 if not word.isupper():#To avoid turning words like AI lower case. Else turn to lower case. Ex: donald_trump
@@ -131,7 +131,7 @@ def extractWiki(blabla, self_graph, memory,  n_search_new_concept):
                         else:
                             OKWikipedia.append(duo)
                             counter+=1
-        print("New words to learn from", OKWikipedia)
+        #print("New words to learn from", OKWikipedia)
         return OKWikipedia, self_graph
 
 
@@ -193,7 +193,7 @@ def hatchSelf(n_search_new_concept, threshold_similarity):
     selfConcepts, voidGraph=extractWiki(rawVA, dict(), [], n_search_new_concept)
     #Record this in a text file
     fileW = open("./case_study/data/wiki.txt","w")
-    print('writing wiki files')
+    #print('writing wiki files')
     fileW.writelines(elt + "\n" for elt in selfConcepts)
     fileW.close()
 
@@ -236,31 +236,39 @@ def hatchSelf(n_search_new_concept, threshold_similarity):
 
 
 def isSelf(self_graph, word, n_search_sim_concept, threshold_similarity):
-    #Check if a word (not belonging to his self) is related to his self_graph.
+    """
+    Check if a word (not belonging to his self) is related to his self_graph.
+    And pick a similar concept (any above the threshold of similarity).
+    """
     nSelf=len(list(self_graph.keys()))
+    #CASE in case graph becomes too big:
     indices=random.sample(range(0, nSelf), min(n_search_sim_concept, nSelf)) #Generate random list of indices where will look for
     self_graph[word]=[0,dict()]   #Add entry to dictionary for now
     ifConnected=False
     maxSim=0
+    possible_simWord=[]
     simWord=""
     #Check similarity with other concepts in Self
     for i, wordSelf in enumerate(list(self_graph.keys())):
         if i in indices:
             similarity_score= semanticSimilarity(word,wordSelf)
             if similarity_score>threshold_similarity:
+                possible_simWord.append(wordSelf)
                 self_graph[word][1][wordSelf]=similarity_score#Add a connection if related enough.
                 self_graph[wordSelf][1][word]=similarity_score#Symmetric
                 ifConnected=True
-                #Retain the closer concept that have found
-                if similarity_score>maxSim:
-                    maxSim=similarity_score
-                    simWord=wordSelf
+                #if similarity_score>maxSim:#IF WANT MAX SIMILARITY
+                #    maxSim=similarity_score
+                #    simWord=wordSelf
+    
     #Conclude if related
     if not ifConnected: #Not related, ie no connection with SelfConcept was above a fixed threshold.
         del self_graph[word] #delete entry from SelfGraph therefore
     else: # if related
+        #Pick a word above threshold similarity:
+        simWord=random.choice(possible_simWord)
         self_graph[word][0]=maxSim*self_graph[simWord][0] #adjust the weight of the node
-    return self_graph, ifConnected, simWord, similarity_score
+    return self_graph, ifConnected, simWord
 
 
 #***********************************************************************PROCEDURES to VISUALIZE GRAPH***************************************************************************
