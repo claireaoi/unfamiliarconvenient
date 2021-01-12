@@ -31,8 +31,8 @@ my_cse_id = config.get('auth', 'my_cse_id')
 #OTHER PARAMETERS #TODO: AS ARGUMENT FCT>>>
 page = 2
 start = (page - 1) * 10 + 1
-minimum_char_one=80
-minimum_char_all=400
+min_char_bit=80
+min_char_block=400#TEST THIIS!
 maximum_char=1000
 
 # there may be more elements you don't want, such as "style", etc. can check
@@ -94,7 +94,7 @@ def get_urls(data):
     return urls
 
 
-def extractMainBlocks(blabla, minimum_char):
+def extractMainBlocks(blabla, min_char_bit):
     """
         Extract the main blocks of text, above a certain number of characters.
     """
@@ -103,11 +103,11 @@ def extractMainBlocks(blabla, minimum_char):
     blocks=blabla.split("\n \n \n")
     extract=""
     for block in blocks:
-        if len(block) > minimum_char:
+        if len(block) > min_char_bit:
             extract+=block+" \n"
     return extract
 
-def scrapsPage(url, minimum_char_one, minimum_char_all):
+def scrapsPage(url, min_char_bit, min_char_block):
     textPage = ''
     result = requests.get(url)
     html_page = result.content # or .text ?
@@ -117,7 +117,7 @@ def scrapsPage(url, minimum_char_one, minimum_char_all):
     #Here see what have in text, as text is going to give us some information we don’t want: remove some type in black list.
     #print(set([t.parent.name for t in text]))
     for t in text:
-        if len(t)>minimum_char_one:#for one thing between tag
+        if len(t)>min_char_bit:#for one thing between tag
             if not (t.parent.name in blacklist):
                 #FIRST FILTER HERE if has element <
                 #TODO: FILTER MORE from html type but also characters
@@ -130,7 +130,7 @@ def scrapsPage(url, minimum_char_one, minimum_char_all):
     #            print("===================")
     #            print(t.parent.name)
     #            print(t)
-    output= extractMainBlocks(textPage, minimum_char_all) 
+    output= extractMainBlocks(textPage, min_char_block) 
     return output
 
 def filter_html(text):
@@ -140,11 +140,11 @@ def filter_html(text):
     """
     return text
 
-def extract_text(urls, minimum_char_one, minimum_char_all):
+def extract_text(urls, min_char_bit, min_char_block):
     extracts=[]
     for url in urls:
         #print("new PAGE=======================================================")
-        extract=scrapsPage(url, minimum_char_one, minimum_char_all)
+        extract=scrapsPage(url, min_char_bit, min_char_block)
         #print("Scrapped Text", extract)
         filtered_extract=filter_html(extract)
         if not filtered_extract is None:
@@ -194,7 +194,7 @@ def cut_extract(extract, maximum_char):
 #**********************************************************************MAIN PROCEDURE**************************************************************************
 
 
-def surf_google(query, minimum_char_one, minimum_char_all, maximum_char):
+def surf_google(query, min_char_bit, min_char_block, maximum_char):
     """
     Main procedure to scrap google result of a query: will scrap the urls first, then the texts of the articles, parse the text and choose
     one of these extracts.
@@ -216,7 +216,7 @@ def surf_google(query, minimum_char_one, minimum_char_all, maximum_char):
     print("=======================================================")
     print("Extracting the texts")
     #TODO: check if can accelerate this step
-    scraped_data=extract_text(urls, minimum_char_one, minimum_char_all)
+    scraped_data=extract_text(urls, min_char_bit, min_char_block)
     #print(extracts)
     ###(3) Choose one extract
     print("=======================================================")

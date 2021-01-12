@@ -5,13 +5,11 @@
 ######Description############
 #
 # Main Script for the Interaction between you and your voice assistant
-#
+
 ######About############
-#TODO: Vary the parameters like temperature, length_opinion w/ stochasticity
-#TODO Vary the parameters like threshold_similarity, proba answer // proba look for work,  w/ lifetime and size graph
-#TODO: Vary all mycroft all "message" and "concept"
-#TODO: Recent Memory check and update it ? and erase it ? words that the VA has looked
 #TODO: Check When Human say nothing
+
+#TODO: Recent Memory check and update it ? and erase it ? words that the VA has looked
 
 
 #***********************************************************************LIBRARY IMPORT***************************************************************************
@@ -43,34 +41,45 @@ import scraper
 import time
 
 #***********************************************************************PARAMETERS***************************************************************************
-global keepThreshold
-keepThreshold=50
-global n_search_new_concept
-n_search_new_concept=10 #  When look for words bounded to a certain number to avoid too slow. (Here, bound on found wikipediable word!).
-global n_search_sim_concept
-n_search_sim_concept=30 # when compare for words in self, this is a max number look for
+
+#####PARAMETERS WHICH EVOLVE#############
 global threshold_similarity
-threshold_similarity=0.1 # threshold when to consider 2 concepts as similar
+threshold_similarity=0.1 # threshold when to consider 2 concepts as similar#TODO: EVOLVE With size graph: nSelf=len(list(self_graph.keys()))
+global n_sim_concept#TODO: EVOLVE With size graph: nSelf=len(list(self_graph.keys()))
+n_sim_concept=30 # when compare for words in self, this is a max number look for, else slow down too much
+######OTHER PARAMETERS TO BE TUNED##############
+global temperature
+temperature=1.0 #for ML model 
+global var_temperature
+var_temperature=0.3 #for ML model:#TODO: or less?
+global keepThreshold
+keepThreshold=50#TODO: TO save human bla, threshold?
+global length_opinion
+length_opinion=110
+global var_length
+var_length=40
+global min_char_bit
+min_char_bit=80
+global min_char_block
+min_char_block=400
+global bound_char_extract
+bound_char_extract=800 #CHECK CAN CHANGE>>>
+global var_bound#variance to above bound
+var_bound=100
+#################################FIXED PARAMETERS##############
+global max_search_new_concept
+max_search_new_concept=20 #  When look for words bounded to a certain number to avoid too slow.
+# Amounts to bound on found wikipediable word! When search from opinion, may be bigger. #TODO: Actually should more bound on nb word check wikipedia on...
 global life_time
 life_time=0
 global own_ML_model
 own_ML_model=False
 global path_model
 path_ML_model='./case_study/models/gpt-2'
-global temperature
-temperature=1.0 #for ML model 
-global length_opinion
-length_opinion=100
 global firstTime
 firstTime=False
 global ifEvolve
 ifEvolve=True
-global minimum_char_one_scrap
-minimum_char_one_scrap=80
-global minimum_char_all_scrap
-minimum_char_all_scrap=400
-global maximum_char_scrap
-maximum_char_scrap=800#CHECK CAN CHANGE>>>
 global self_graph
 global memory
 global self_data
@@ -97,8 +106,6 @@ if own_ML_model:
     model=GPT2LMHeadModel.from_pretrained(path_ML_model)
 else:
     model=GPT2LMHeadModel.from_pretrained("gpt2")
-
-
 
 #***********************************************************************PRELIMINARIES*************************************************************************    
 
@@ -186,10 +193,11 @@ def interact_with_human_global(message):
 def gpt2(context, length_output, temperature): 
     """
         One ML drift with gpt-2, with a context. Printed and said by VA.
+        With some stochasticity
     """
     process = tokenizer.encode(context, return_tensors = "pt")
     #generator = model.generate(process, max_length = length_output, temperature = temperature, repetition_penalty = 2.0)
-    generator = model.generate(process, max_length = lengthDrift, temperature = temperature, repetition_penalty = 2.0, do_sample=True, top_k=50)
+    generator = model.generate(process, max_length = length_output, temperature = temperature, repetition_penalty = 2.0, do_sample=True, top_k=20)
 
 
     drift = tokenizer.decode(generator.tolist()[0])
@@ -228,7 +236,7 @@ def interact1(human_bla):
     print("=======================================================")
     print("step 2- Extract words from humam Bla") #NO GPt2 in default core QUEST i love trees etc check why printed
     print("=======================================================")
-    OKWikipedia, self_graph=coreQuest.extractWiki(human_bla, self_graph, memory, n_search_new_concept)#actually real n_search_new_concept may double because of composed words.
+    OKWikipedia, self_graph=coreQuest.extractWiki(human_bla, self_graph, memory, max_search_new_concept)#actually real n_search_new_concept may double because of composed words.
 
     print("Words extracted from human blabla:", OKWikipedia)
     
@@ -285,7 +293,8 @@ def interact1(human_bla):
     client.emit(Message('speak', data={'utterance': interest}))
     print(interest)
     print("Now surfing the online space...")
-    scraped_data, extract_1=scraper.surf_google(query, minimum_char_one_scrap, minimum_char_all_scrap, maximum_char_scrap)
+    nb_char_extract=bound_char_extract+var_bound*random(-1,1)
+    scraped_data, extract_1=scraper.surf_google(query, min_char_bit, min_char_block, nb_char_extract)
     
     #SAVE DATA THAT WAS SCRAPED
     print("Save data...")
@@ -334,7 +343,7 @@ def interact2(human_bla):
     print("step 7----Extract new concept from human opinion")
     print("=======================================================")
     #(7) Pick a new concept from human opinion:
-    OKWikipedia, self_graph=coreQuest.extractWiki(human_bla, self_graph, memory, n_search_new_concept)
+    OKWikipedia, self_graph=coreQuest.extractWiki(human_bla, self_graph, memory, max_search_new_concept)
     print("Words extracted from human opinion:", OKWikipedia)
    
     found_new_concept=False
@@ -363,7 +372,8 @@ def interact2(human_bla):
         #(8) New surf& scrap with these 3 concepts. and Save
         new_query= concept_3 + " "+ concept_1+ " "+ concept_2
         print("Now surfing the online space...")
-        scraped_data_2, extract_2=scraper.surf_google(new_query, minimum_char_one_scrap, minimum_char_all_scrap, maximum_char_scrap)
+        nb_char_extract=bound_char_extract+var_bound*random(-1,1)
+        scraped_data_2, extract_2=scraper.surf_google(new_query, min_char_bit, min_char_block, nb_char_extract)
 
         #SAVE DATA THAT WAS SCRAPED
         print("Save scraped data...")
@@ -387,7 +397,9 @@ def interact2(human_bla):
     else:
         seed=extract_1
     context= seed +"\n"+"I personally think that "
-    opinion=gpt2(context, length_opinion, temperature) #TODO: REMOVE context from output...?
+    length_output=length_opinion + random.randint(-var_length, +var_length)
+    temperature_gpt2=temperature+var_temperature*random(-1,1)
+    opinion=gpt2(context, length_output, temperature_gpt2) #TODO: REMOVE context from output...?
     print("Opinion VA:", opinion)
     
     print("=======================================================")

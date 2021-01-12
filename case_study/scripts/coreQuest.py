@@ -235,14 +235,14 @@ def hatchSelf(n_search_new_concept, threshold_similarity):
 #***********************************************************************PROCEDURES to GROW SELF***************************************************************************
 
 
-def isSelf(self_graph, word, n_search_sim_concept, threshold_similarity):
+def isSelf(self_graph, word, n_sim_concept, threshold_similarity):
     """
     Check if a word (not belonging to his self) is related to his self_graph.
     And pick a similar concept (any above the threshold of similarity).
     """
     nSelf=len(list(self_graph.keys()))
     #CASE in case graph becomes too big:
-    indices=random.sample(range(0, nSelf), min(n_search_sim_concept, nSelf)) #Generate random list of indices where will look for
+    indices=random.sample(range(0, nSelf), min(n_sim_concept, nSelf)) #Generate random list of indices where will look for
     self_graph[word]=[0,dict()]   #Add entry to dictionary for now
     ifConnected=False
     maxSim=0
