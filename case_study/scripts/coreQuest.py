@@ -3,24 +3,12 @@
 
 ######Description############
 #
-# Behind the scene of procedures used in selfQuest.py mainly.
+# Behind the scene of some procedures related to Self Quest
 #
-#
-######About############
-# This script was created for the project Unfamiliar Convenient by Vytautas Jankauskas and Claire Glanois.
-# It is used in the workshop Unfamiliar Virtual Convenient, led through School of Machines, Make & believe, in spring 2020.
-#
-# That is why comments may be messier and still in progress. :)
-# Feel free to tune, or reshape it according to your project.
-#
-
 #***********************************************************************PARAMETERS***************************************************************************
 
-
-###These parameters could be tuned possibly.
-global startingWeight # Starting weights for every node of the graph. Between 0 and 1
-startingWeight=0.5
-
+global INITIAL_WEIGHT # Starting weights for every node of the graph. Between 0 and 1
+INITIAL_WEIGHT=0.5
 #***********************************************************************INITIALIZATION***************************************************************************
 
 ###IMPORT general
@@ -33,18 +21,15 @@ import string
 import time
 import operator
 import urllib.request as ur
-
 #To visualize graph
 import networkx as nx #networkx need install the library: pip install networkx
 import matplotlib.pylab as plot
 from networkx.drawing.nx_agraph import graphviz_layout, to_agraph
 import pygraphviz as pgv
 from PIL import Image
-
 #For semantic similarity
 from sematch.semantic.similarity import WordNetSimilarity
 wns = WordNetSimilarity()
-
 #For NLP and Wikipedia
 import nltk
 from nltk import word_tokenize, sent_tokenize, pos_tag
@@ -75,11 +60,12 @@ def disambiguationPage(word):
 
 excluded=['a', 'the', 'an', 'I', 'to', 'are', 'not', 'for', 'best','you', 'they', 'she', 'he', 'if', 'me', 'on', 'is', 'are', 'them', 'why', 'per', 'out', 'with', 'by'] #exclude these words to be looked upon
 
-def extractWiki(blabla, self_graph, memory,  n_search_new_concept):
+def extractWiki(blabla, self_graph, memory,  max_pick_word):
     """
         Extract wikipediable words from a blabla, which are not on the memory, nor on the selGraph, nor in excluded
-        Self Quest bounded to a maximum of n_search_new_concept to avoid too long wait. Beware, of found wikipediable word!
+        Self Quest bounded to a maximum of max_pick_word to avoid too long wait. Beware, of found wikipediable word!
         Beware of upper or lower letters which can create conflicts.
+        #TODO: CLEANER PROCEDURE
     """
     OKWikipedia=[]
     if len(blabla)==0: #empty
@@ -87,11 +73,8 @@ def extractWiki(blabla, self_graph, memory,  n_search_new_concept):
         return OKWikipedia, self_graph
     else:
         counter=0#count words added
-        #print(blabla)
-        #print(word_tokenize(blabla))
-        #print(nltk.pos_tag(word_tokenize(blabla)))
         for word, pos in nltk.pos_tag(word_tokenize(blabla)):
-            if counter<n_search_new_concept:#Stop once has enough words
+            if counter<max_pick_word:#Stop once has enough words
                 if not word.isupper():#To avoid turning words like AI lower case. Else turn to lower case. Ex: donald_trump
                     word=word.lower()
                 #Below, keep mostly noun words. Could also take verbs (VBP) and other type if want.
@@ -113,7 +96,7 @@ def extractWiki(blabla, self_graph, memory,  n_search_new_concept):
         wordList=blabla.split()
         counter=0
         for i, word in enumerate(wordList):
-            if counter<n_search_new_concept:#Stop once has enough words
+            if counter<max_pick_word:#Stop once has enough words
                 word= word.strip(string.punctuation)
                 if not word.isupper(): #lower letter unless fully upper letter
                     word=word.lower() #Could also lemmatize.
@@ -180,7 +163,7 @@ def semanticSimilarity(word1, word2):
 
     return score
 
-def hatchSelf(n_search_new_concept, threshold_similarity):
+def hatchSelf(max_pick_word, threshold_similarity):
     """
          Hatch (build) the self Graph from hatchVA.txt
     """
@@ -190,7 +173,7 @@ def hatchSelf(n_search_new_concept, threshold_similarity):
 
     #(1) Extract wikipedia-ble words from these texts and put them in a waiting List, and start a self_graph which is a dictionnary in Python
     # For now, only with Wikipedia. Could add wiktionary.
-    selfConcepts, voidGraph=extractWiki(rawVA, dict(), [], n_search_new_concept)
+    selfConcepts, voidGraph=extractWiki(rawVA, dict(), [], max_pick_word)
     #Record this in a text file
     fileW = open("./case_study/data/wiki.txt","w")
     #print('writing wiki files')
@@ -201,9 +184,9 @@ def hatchSelf(n_search_new_concept, threshold_similarity):
     ### self_graph is a dictionnary, whose keys are concepts, and values are WEIGHT, NEIGHBOURS.
     ## Neighbors is a dictionnary whose keys are related, concepts and values are weights
     self_graph=dict.fromkeys(selfConcepts)
-    # Each node is initialised with weight startingWeight. This weight can evolve later (increase, though always between 0 and 1)
+    # Each node is initialised with weight INITIAL_WEIGHT. This weight can evolve later (increase, though always between 0 and 1)
     for key in self_graph.keys(): #[weight, neighbors]
-        self_graph[key]= [startingWeight, dict()]
+        self_graph[key]= [INITIAL_WEIGHT, dict()]
 
     nNode=len(list(self_graph.keys()))
     print("Self is Born. It is not yet associative.")

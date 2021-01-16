@@ -3,5 +3,8 @@
 
 case_study/fallback-MLdrift/gpt2/
 case_study/data/config.ini
+case_study/arxiv/
 
 *.pyc
+
+
