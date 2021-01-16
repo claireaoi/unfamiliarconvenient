@@ -2,10 +2,7 @@
 #!/usr/bin/env python3 # to use in terminal
 
 #TODO: IMPROVE TIME! for extracting texts step mainlz
-#TODO: TO FILTER FOLLOWING TEXTS below page. library check if make sense
-#remove link if only a link, not in a sentence?
-#newspaper as parser?
-#RUN NEW TESTS. 
+#TODO: CHECK ALL FILTERS AND IMPROVE
 
 #**********************************************************************IMPORT**************************************************************************
 
@@ -32,7 +29,7 @@ my_cse_id = config.get('auth', 'my_cse_id')
 page = 2
 start = (page - 1) * 10 + 1
 min_char_bit=80
-min_char_block=400#TEST THIIS!
+min_char_block=200#TODO: TEST THIS
 maximum_char=1000
 
 # there may be more elements you don't want, such as "style", etc. can check
@@ -50,20 +47,34 @@ blacklist = [
     'cite',
 	'style',
 	'title',
-	'form',#, okremove ?
-	'label',#, okremove ?
-	'span', #, okremove ?
-	'img',#, okremove ?
-	'section',#, okremove ?
-	'ul', #, unordered list
-	'li',#, okremove ?
-	'ol',#, ordered list
-	#'a',#, hyperlink to link one page to another?#TODO: GET THE TEXT FROM the a, not the href
-	'body',#, okremove ?
-#	'hgroup'#, okremove ?
+	'form',
+    'div',
+    'img',
+    'body',#, ok?
+	'label',#, ok?
+    'hgroup'#, ok?
+	'section',# ok?
+    'aside',#?
+    'link',
+    'svg',
+    'span', # ok?
+    'nav',
+    'g',
+    'picture',
+    'figure',
+    'figcaption',
+    'main',
+    'dd',#in a description list
+    'dt',#in a description list
+    'ul', #, unordered list
+	'li'#, list
+    #'strong', ? 
+	#'ol',#, ordered list
+	#'a',#, hyperlink to link one page to another?
+
 ]
 #USUALLY: p is the good tag or div! but also 'h2', 'h3','h1 maybbe...
-#GOOD TAGS: p, a, div, i, ...
+#GOOD TAGS: p, q, a, div, i, ...
 
 #*******************************************************************PROCEDURES**************************************************************************
 
@@ -94,16 +105,16 @@ def get_urls(data):
     return urls
 
 
-def extractMainBlocks(blabla, min_char_bit):
+def extractMainBlocks(blabla, min_char_block):
     """
         Extract the main blocks of text, above a certain number of characters.
     """
-    #TODO: ONLY KEEP ONE BLOCK FOR FURTHER COHERENCE. (as one paragraph) between 2 tags for instance...
+    #TODO: ONLY KEEP ONE BLOCK FOR FURTHER COHERENCE? (as one paragraph) between 2 tags for instance...
     
-    blocks=blabla.split("\n \n \n")
+    blocks=blabla.split("\n \n \n")#TODO: OR SPLIT ONLY AFTER ONE \n..?
     extract=""
     for block in blocks:
-        if len(block) > min_char_bit:
+        if len(block) > min_char_block:
             extract+=block+" \n"
     return extract
 
@@ -117,26 +128,40 @@ def scrapsPage(url, min_char_bit, min_char_block):
     #Here see what have in text, as text is going to give us some information we don’t want: remove some type in black list.
     #print(set([t.parent.name for t in text]))
     for t in text:
-        if len(t)>min_char_bit:#for one thing between tag
-            if not (t.parent.name in blacklist):
-                #FIRST FILTER HERE if has element <
-                #TODO: FILTER MORE from html type but also characters
-                if (t.count("<") < 2):
-                    textPage += '{} '.format(t)
+        if not(t.parent.name in blacklist):
+            textBit=filter_bit(t,t.parent.name,min_char_bit)
+            if textBit is not None:
+                textPage += '{} '.format(textBit)
     #JUST HERE TO CHECK BLOCK TYPE HTML, COMMENT OUT THEN
-    #for t in text:
-    #    if len(t)>minimum_char_one:
-    #        if not (t.parent.name in blacklist) and (t.count("<") < 2):
-    #            print("===================")
-    #            print(t.parent.name)
-    #            print(t)
+    test_block=""
+    for t in text:
+        if (not (t.parent.name in blacklist)) and len(t)>min_char_bit and (t.count("<") < 2):
+            test_block+="==================="+t.parent.name+ "\n"+ t
+    with open('./case_study/data/scraper_check.txt', "a") as f:#Add it to conversation historics
+        f.write(test_block + "\n")
+
+    #KEEP ONLY MAIN BLOCK OF TEXT FROM A PAGE
     output= extractMainBlocks(textPage, min_char_block) 
     return output
 
-def filter_html(text):
+def filter_bit(text,tag, min_char_bit):
     """
-        Filter the html text  like <...> blabla <...> unless very long within blabla (because then may be a paragraph)
-    #TODO
+        Filter one bit of text.
+    #TODO: Check filters below...
+    """
+    if (text.count("<") > 2):#in case still code bits
+        return None
+    elif len(text)<min_char_bit:
+    #TODO: Issue with length filter is for tag like a etc where in the middle of a sentence...
+    #May do in future that check previous tag if p (so middle sentence assume), keep it if tag==a or tag==strong
+        return None
+    else:
+        return text
+
+
+def filter_block(text):
+    """
+    #TODO: cf examples below, filter them.
     """
     return text
 
@@ -146,7 +171,7 @@ def extract_text(urls, min_char_bit, min_char_block):
         #print("new PAGE=======================================================")
         extract=scrapsPage(url, min_char_bit, min_char_block)
         #print("Scrapped Text", extract)
-        filtered_extract=filter_html(extract)
+        filtered_extract=filter_block(extract)
         if not filtered_extract is None:
             extracts.append(filtered_extract)
     return extracts
@@ -232,7 +257,7 @@ def surf_google(query, min_char_bit, min_char_block, maximum_char):
     return scraped_data, final_extract
 
 ###LAUNCH IT to try. TEST SAVE
-#surf_google("Coffee", minimum_char_one, minimum_char_all, maximum_char)
+#surf_google("tiger bubble", min_char_bit, min_char_block, maximum_char)
 
 
 
@@ -258,7 +283,10 @@ def surf_google(query, min_char_bit, min_char_block, maximum_char):
         ## or for HTML snippet (bolded keywords) html_snippet = search_item.get("htmlSnippet")
 
 
-#TO FILTER FOLLOWING TEXTS
+
+
+#TODO: CHECK FILTERING FOR THIS
+
 """ Setting `pad_token_id` to `eos_token_id`:50256 for open-end generation.
 
 	Subscription Cart Footer
@@ -266,7 +294,6 @@ def surf_google(query, min_char_bit, min_char_block, maximum_char):
 	Updated: 2017/06/12
 
  """
-#TODO: CHECK FILTERING FOR THIS
  #age, including during development in the womb, during childhood, and during adulthood (13). When a clitoris size is large enough to be considered abnormal, this is called   and the clitoris are related in structure t
 
                                     #  Hats & Caps
