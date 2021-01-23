@@ -14,14 +14,7 @@ import numpy as np
 import random
 import re
 import json
-import nltk
-from nltk import word_tokenize, sent_tokenize, pos_tag
-from nltk.corpus import words, wordnet
-from nltk.stem.wordnet import WordNetLemmatizer
-nltk.download('wordnet')#first_time only
-nltk.download('wordnet_ic')
-nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')
+import time
 import urllib.request
 import keyboard  # using module keyboard
 import os.path 
@@ -32,8 +25,7 @@ from transformers import GPT2Tokenizer, GPT2LMHeadModel
 #Import of other scripts
 import coreQuest
 import scraper
-import time
-from utils import crop_unfinished_sentence
+from utils import crop_unfinished_sentence, loadSelf
 
 #***********************************************************************PARAMETERS***************************************************************************
 
@@ -74,7 +66,7 @@ MAX_PICK_WORD=20 # When look for words bounded to a certain number to avoid too 
 # Amounts to bound on found wikipediable word! When search from opinion, may be bigger.
 global OWN_ML_MODEL
 OWN_ML_MODEL=False
-global path_model
+global path_ML_model
 path_ML_model='./case_study/models/gpt-2'
 global SAVE_BLA
 SAVE_BLA=True
@@ -95,44 +87,23 @@ global wait_for_opinion
 wait_for_opinion=False
 global timeout_start
 timeout_start=0
-#Initialize machine learning model
-global tokenizer
-tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-global model
-if OWN_ML_MODEL:
-    model=GPT2LMHeadModel.from_pretrained(path_ML_model)
-else:
-    model=GPT2LMHeadModel.from_pretrained("gpt2")
+
 
 #***********************************************************************PRELIMINARIES*************************************************************************    
 
 
+def gpt2_text_generation(context, length_output, TEMPERATURE): 
+    """
+        One ML drift with gpt-2, with a context. Printed and said by VA.
+        With some stochasticity
+    """
+    process = tokenizer.encode(context, return_tensors = "pt")
+    #generator = model.generate(process, max_length = length_output, TEMPERATURE = TEMPERATURE, repetition_penalty = 2.0)
+    generator = model.generate(process, max_length = length_output, TEMPERATURE = TEMPERATURE, repetition_penalty = 2.0, do_sample=True, top_k=20)
+    drift = tokenizer.decode(generator.tolist()[0])
+    client.emit(Message('speak', data={'utterance': drift})) #does it say this or just will answer?
+    return drift
 
-def loadSelf(FIRST_RUN):
-    """
-        The VA loads his self_graph, memory, lifetime, as last saved. Or build it if first time.
-    """
-    if FIRST_RUN:
-        phrase="Hatching self in process..."
-        print(phrase)
-        self_graph, memory, description=coreQuest.hatchSelf(MAX_PICK_WORD, threshold_similarity)
-        self_data=dict()
-        self_data["lifetime"]=0
-        print(description)
-  
-    else:
-        with open('./case_study/data/selfgraph.txt', 'r') as json_file:
-            self_graph = json.load(json_file)
-        with open('./case_study/data/memory.txt', "r") as f:
-            memory=f.readlines() #List of words concepts he looked up
-        with open('./case_study/data/selfdata.txt', "r") as json_file:
-            self_data=json.load(json_file)
-        lifetime=self_data["lifetime"]
-        phrase="I am here. My lifetime is "+ str(lifetime) + " interactions."
-        print(phrase)
-        #client.emit(Message('speak', data={'utterance': phrase}))#cannot put before run forever ?
-  
-    return self_graph, memory, self_data
 
 
 def interact_with_human_global(message):
@@ -200,18 +171,6 @@ def interact_with_human_global(message):
     #    sys.exit()
 
 
-def gpt2(context, length_output, TEMPERATURE): 
-    """
-        One ML drift with gpt-2, with a context. Printed and said by VA.
-        With some stochasticity
-    """
-    process = tokenizer.encode(context, return_tensors = "pt")
-    #generator = model.generate(process, max_length = length_output, TEMPERATURE = TEMPERATURE, repetition_penalty = 2.0)
-    generator = model.generate(process, max_length = length_output, TEMPERATURE = TEMPERATURE, repetition_penalty = 2.0, do_sample=True, top_k=20)
-    drift = tokenizer.decode(generator.tolist()[0])
-    client.emit(Message('speak', data={'utterance': drift})) #does it say this or just will answer?
-    return drift
-
 
 #***********************************************************************MAIN PROCEDURE************************************************************************
 
@@ -223,7 +182,6 @@ def interact1(human_bla):
     global self_graph
     global self_data
     global memory
-    global self_data
     global concept_1
     global concept_2
     global extract_1
@@ -411,8 +369,8 @@ def interact2(human_bla):
     context= seed+"\n"+"I think"#Or add sth?
     length_output=OPINION_LENGTH + random.randint(-OPINION_LENGTH_VARIANCE, +OPINION_LENGTH_VARIANCE)
     TEMPERATURE_gpt2=TEMPERATURE+TEMPERATURE_VARIANCE*random.uniform(-1,1)
-    opinion=gpt2(context, length_output, TEMPERATURE_gpt2) 
-    #TODO: REMOVE context from output...?
+    opinion=gpt2_text_generation(context, length_output, TEMPERATURE_gpt2) 
+    opinion = opinion.replace(seed, "") #TODO: REMOVE context from output...???
     print("Opinion VA:", opinion)
     
     print("=======================================================")

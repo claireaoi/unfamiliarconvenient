@@ -1,3 +1,5 @@
+
+
 # !/usr/local/bin/python3
 # -*- coding: utf-8 -*-
 
@@ -14,7 +16,6 @@ INITIAL_WEIGHT=0.5
 ###IMPORT general
 import numpy as np
 import json
-import fire
 import re
 import random
 import string
@@ -42,6 +43,28 @@ nltk.download('averaged_perceptron_tagger')
 lemmatizer = WordNetLemmatizer()
 import wikipediaapi
 wikipedia = wikipediaapi.Wikipedia('en')
+
+
+#***********************************************************************PROCEDURES for FILTERING**************************************************************************
+
+
+def crop_unfinished_sentence(text):
+    """
+    Remove last unfinished bit from text. 
+    """
+    #SELECT FROM THE RIGHT rindex s[s.rindex('-')+1:]  
+    stuff= re.split(r'(?<=[^A-Z].[.!?]) +(?=[A-Z])', text)
+
+    new_text=""
+    for i in range(len(stuff)):
+        if i<len(stuff)-1:
+            new_text+= " " + stuff[i]
+        elif stuff[i][-1] in [".", ":", "?", "!", ";"]:#only if last character ounctuation keep
+            new_text+= " " + stuff[i]
+
+    return new_text
+
+
 
 #***********************************************************************PROCEDURES for wikipedia SearchH***************************************************************************
 
@@ -167,19 +190,21 @@ def semanticSimilarity(word1, word2):
 
     return score
 
+
+
 def hatchSelf(max_pick_word, threshold_similarity):
     """
          Hatch (build) the self Graph from hatchVA.txt
     """
     # (0) Load the Initial list of words to hatch the VA self_graph: in hatcHVA.txt
-    with open('./case_study/data/hatchVA.txt') as f:
+    with open('./data/hatchVA.txt') as f:
         rawVA= ''.join(f.readlines())
 
     #(1) Extract wikipedia-ble words from these texts and put them in a waiting List, and start a self_graph which is a dictionnary in Python
     # For now, only with Wikipedia. Could add wiktionary.
     selfConcepts, voidGraph=extractWiki(rawVA, dict(), [], max_pick_word)
     #Record this in a text file
-    fileW = open("./case_study/data/wiki.txt","w")
+    fileW = open("./data/wiki.txt","w")
     #print('writing wiki files')
     fileW.writelines(elt + "\n" for elt in selfConcepts)
     fileW.close()
@@ -201,9 +226,9 @@ def hatchSelf(max_pick_word, threshold_similarity):
     nEdge=connectNodes(self_graph, threshold_similarity)
 
     #(4) Save it, in both selfbirth.txt and selfgraph.txtm to keep always initial graph in memory.
-    with open('./case_study/data/selfbirth.txt', 'w') as outfile:
+    with open('./data/selfbirth.txt', 'w') as outfile:
         json.dump(self_graph, outfile)
-    with open('./case_study/data/selfgraph.txt', 'w') as outfile:
+    with open('./data/selfgraph.txt', 'w') as outfile:
         json.dump(self_graph, outfile)
 
    #(5) init Memory as the list of keys. With as first element an index to keep track to where we are writing in the memory.
@@ -217,6 +242,27 @@ def hatchSelf(max_pick_word, threshold_similarity):
     description="Self is born. Self is a network with {} concepts and {} connections. My meshedness coefficient is {} .".format(nNode, nEdge, round(mesh,3))
 
     return self_graph, memory, description
+
+#***********************************************************************PROCEDURES to LOAD SELF***************************************************************************
+
+
+def loadSelf(first_run, max_pick_word, threshold_similarity):
+    """
+        The VA loads his self_graph, memory, lifetime, as last saved. Or build it if first time.
+    """
+    if first_run:
+        print("Hatching self in process...")
+        self_graph, memory, description=hatchSelf(max_pick_word, threshold_similarity)
+        self_data=dict()
+        self_data["lifetime"],self_data["memory"]=0, memory
+    else:
+        with open('./data/selfgraph.txt', 'r') as json_file:
+            self_graph = json.load(json_file)
+        with open('./data/selfdata.txt', "r") as json_file:
+            self_data=json.load(json_file)
+        print("I am here. My lifetime is {} interactions".format(str(self_data["lifetime"])))
+
+    return self_graph, self_data
 
 
 #***********************************************************************PROCEDURES to GROW SELF***************************************************************************
@@ -333,7 +379,7 @@ def drawGraph(G):
     #Rendering via Graphviz. >>Draw Attributes!
     A.layout('dot')
     #Saving
-    A.draw('./case_study/data/self_graph.png')
+    A.draw('./data/self_graph.png')
     #Show Image
-    img=Image.open('./case_study/data/self_graph.png')
+    img=Image.open('./data/self_graph.png')
     img.show()

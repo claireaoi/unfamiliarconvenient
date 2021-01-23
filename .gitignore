@@ -1,10 +1,54 @@
-.DS_Store
-*/.DS_Store
-
+# For this project
+###################
 case_study/fallback-MLdrift/gpt2/
 case_study/data/config.ini
 case_study/arxiv/
 
+###VS CODE
+###################
+.vscode
+
+#OTHER
+#####
+/bin
+
+#OUT
+#####
+/out
+
+#PACKAGE
+#####
+/node_modules
+/packages
+
+#LOG
+#####
+*.log
+logs/
+
+
+# venv
+###################
+.venv
+venv/
+
+# Compiled
+###################
 *.pyc
+/__pycache__
+/__pycache__/
+.pytest_cache/
+*/__pycache__
+
+# OS generated files #
+######################
+.DS_Store
+.DS_Store?
+*/.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
 
