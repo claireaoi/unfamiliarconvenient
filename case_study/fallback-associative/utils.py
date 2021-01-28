@@ -44,6 +44,7 @@ lemmatizer = WordNetLemmatizer()
 import wikipediaapi
 wikipedia = wikipediaapi.Wikipedia('en')
 
+#TODO: CLEAN THIS CODE
 
 #***********************************************************************PROCEDURES for FILTERING**************************************************************************
 
@@ -93,8 +94,10 @@ def extractWiki(blabla, self_graph, memory,  max_pick_word):
         Self Quest bounded to a maximum of max_pick_word to avoid too long wait. Beware, of found wikipediable word!
         Beware of upper or lower letters which can create conflicts.
         #TODO: CLEANER PROCEDURE
+       
     """
     OKWikipedia=[]
+    
     if len(blabla)==0: #empty
         print("No new words to grow from.")
         return OKWikipedia, self_graph
@@ -105,7 +108,7 @@ def extractWiki(blabla, self_graph, memory,  max_pick_word):
                 if not word.isupper():#To avoid turning words like AI lower case. Else turn to lower case. Ex: donald_trump
                     word=word.lower()
                 #Below, keep mostly noun words. Could also take verbs (VBP) and other type if want.
-                if not word is None and len(word)>1 and not hasNumbers(word) and (pos == 'NN' or pos == 'NNS' or pos == 'NNP'):
+                if not word is None and len(word)>1 and not hasNumbers(word) and (pos in ['NN', 'NNS','NNP']):
                     pos2=[]
                     word=lemmatizer.lemmatize(word) #Does it even for NNP ?? What will happen? #word=wordnet.morphy(word)
                     for tmp in wordnet.synsets(word): #Take all tags corresponding to exactly the name
@@ -143,6 +146,68 @@ def extractWiki(blabla, self_graph, memory,  max_pick_word):
                             counter+=1
         #print("New words to learn from", OKWikipedia)
         return OKWikipedia, self_graph
+
+
+def extractWordnet(blabla, self_graph, memory,  max_pick_word):
+    """
+        Extract wordnet words from a blabla, which are not on the memory, nor on the selGraph, nor in excluded
+        TAKE ALSO WIKIPEDIA STILL
+        Self Quest bounded to a maximum of max_pick_word to avoid too long wait. Beware, of found wikipediable word!
+        Beware of upper or lower letters which can create conflicts.
+        #TODO: CLEANER PROCEDURE
+       
+    """
+    OKWordnet=[]
+    wn_lemmas = set(wordnet.all_lemma_names())#TODO: SHALL LOAD IT ONLY ONCE???
+    if len(blabla)==0: #empty
+        print("No new words to grow from.")
+        return OKWordnet, self_graph
+    else:
+        counter=0#count words added
+        for word, pos in nltk.pos_tag(word_tokenize(blabla)):
+            if counter<max_pick_word:#Stop once has enough words
+                if not word.isupper():#To avoid turning words like AI lower case. Else turn to lower case. Ex: donald_trump
+                    word=word.lower()
+                #Below, keep mostly noun words. Could also take verbs (VBP) and other type if want.
+                if not word is None and len(word)>1 and not hasNumbers(word) and (pos in ['NN', 'NNS','NNP']):
+                    pos2=[]
+                    word=lemmatizer.lemmatize(word) #Does it even for NNP ?? What will happen? #word=wordnet.morphy(word)
+                    for tmp in wordnet.synsets(word): #Take all tags corresponding to exactly the name
+                        if tmp.name().split('.')[0] == word:
+                            pos2.append(tmp.pos())
+                    if ((word in wn_lemmas) or (wikipedia.page(word).exists())) and (pos == 'NNP' or (len(pos2)>0 and pos2[0]=='n')) and not (word in OKWordnet) and not word.lower() in memory and not disambiguationPage(word):#up to capital:
+                        if word in self_graph.keys():#Word is there, augment its weight.
+                            self_graph[word][0]=self_graph[word][0]*1.1
+                        elif word.lower() in self_graph.keys():
+                            self_graph[word.lower()][0]=self_graph[word.lower()][0]*1.1
+                        else: #Add word !
+                            OKWordnet.append(word)
+                            counter+=1
+        #Spacial case of duo words for wikipedia, such as global_warming https://en.wikipedia.org/wiki/Global_warming
+        wordList=blabla.split()
+        counter=0
+        for i, word in enumerate(wordList):
+            if counter<max_pick_word:#Stop once has enough words
+                word= word.strip(string.punctuation)
+                if not word.isupper(): #lower letter unless fully upper letter
+                    word=word.lower() #Could also lemmatize.
+                if i<len(wordList)-1:
+                    nextword=wordList[i+1]
+                    nextword=nextword.strip(string.punctuation)
+                    if not nextword.isupper():  #lower letter unless fully upper letter
+                        nextword=nextword.lower()
+                    duo=word+" "+nextword
+                    if len(word)>1 and len(nextword)>1 and word not in excluded and nextword not in excluded and not hasNumbers(word) and not hasNumbers(nextword) and ((word in wn_lemmas) or wikipedia.page(duo).exists()) and not (duo in OKWordnet) and not disambiguationPage(duo):
+                        if duo in self_graph.keys():
+                            self_graph[duo][0]=self_graph[duo][0]*1.1
+                        elif duo.lower() in self_graph.keys():
+                            self_graph[duo.lower()][0]=self_graph[duo.lower()][0]*1.1
+                        else:
+                            OKWordnet.append(duo)
+                            counter+=1
+        #print("New words to learn from", OKWikipedia)
+        return OKWordnet, self_graph
+
 
 
 #***********************************************************************PROCEDURES to INIT GRAPH***************************************************************************

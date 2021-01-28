@@ -21,7 +21,7 @@ from os import path
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 #Import from other scripts
 import scraper
-from utils import loadSelf, extractWiki, isSelf
+from utils import loadSelf, extractWiki, isSelf, extractWordnet
 
 #***********************************************************************PARAMETERS***************************************************************************
 
@@ -95,6 +95,9 @@ class AssociativeFallback(FallbackSkill):
         self.state_interaction="beginning"#ELSE "opinion.."
         self.concepts,self.extracts =[], []
 
+        #INIT and LOAD THE MESSAGE LIST
+        self.MSG_ASKOPINION, self.MSG_COMETOGETHER, self.MSG_COMETOGETHER3, self.MSG_INTEREST, self.MSG_LETMETHINK, self.MSG_NOINTEREST, self.MSG_SHARE, self.MSG_NOTED=[], [], [],[], [], [],[], []
+        self.load_message()
 
     def initialize(self):
         """
@@ -147,7 +150,7 @@ class AssociativeFallback(FallbackSkill):
             print("Caught human opinion")
             human_opinion = str(message.data.get('utterances')[0])
             print(f'Human said "{human_opinion}"')
-            self.speak("Noted.")
+            self.speak(random.choice(self.MSG_NOTED))
             if SAVE_BLA and len(human_opinion)>MIN_CHAR_SAVE:
                 with open('./data/heard_human.txt', "a") as f:#Add it to conversation historics
                     f.write(human_opinion + ". ")
@@ -157,9 +160,24 @@ class AssociativeFallback(FallbackSkill):
 
         return True#IF HANDLED...
 
-
-    
-
+    def load_message(self):
+        with open('./message/message_askopinion.txt', 'r') as f:
+            self.MSG_ASKOPINION = [line.rstrip('\n') for line in f]
+        with open('./message/message_cometogether.txt', 'r') as f:
+            self.MSG_COMETOGETHER= [line.rstrip('\n') for line in f]
+        with open('./message/message_cometogether3.txt', 'r') as f:
+            self.MSG_COMETOGETHER3 = [line.rstrip('\n') for line in f]
+        with open('./message/message_interest.txt', 'r') as f:
+            self.MSG_INTEREST = [line.rstrip('\n') for line in f]
+        with open('./message/message_nointerest.txt', 'r') as f:
+            self.MSG_NOINTEREST = [line.rstrip('\n') for line in f]
+        with open('./message/message_share.txt', 'r') as f:
+            self.MSG_SHARE = [line.rstrip('\n') for line in f]
+        with open('./message/message_noted.txt', 'r') as f:
+            self.MSG_NOTED = [line.rstrip('\n') for line in f]
+        with open('./message/message_letmethink.txt', 'r') as f:
+            self.MSG_LETMETHINK = [line.rstrip('\n') for line in f]
+        
 
     #the Skill creator must make sure the skill handler is removed when the Skill is shutdown by the system.
     def shutdown(self):
@@ -195,7 +213,7 @@ class AssociativeFallback(FallbackSkill):
         print("=======================================================")
         print("Step 1--Preliminaries")
         print("=======================================================")
-        self.speak( "Let me think about this.")       
+        self.speak(random.choice(self.MSG_LETMETHINK))
         self.data["lifetime"]+=1
 
         #(2) Chris extract one or two word from utterance
@@ -204,8 +222,12 @@ class AssociativeFallback(FallbackSkill):
         print("step 2- Extract words from humam Bla") #NO GPt2 in default core QUEST i love trees etc check why printed
         print("=======================================================")
         OKWikipedia, self.graph=extractWiki(human_bla, self.graph, self.data["memory"], MAX_PICK_WORD)
-        print("Words extracted from human blabla:", OKWikipedia)
-        
+        #TODO ALTERNATIVE EXTRACTION, CHOOSE WHICH ONE and if so replace
+        OKWordnet, self.graph=extractWordnet(human_bla, self.graph, self.data["memory"], MAX_PICK_WORD)
+        print("Words extracted from human blabla with wiki:", OKWikipedia)
+        print("Words extracted from human blabla with wordnet:", OKWordnet)
+
+
         #(3) Pick one word from this list (if not empty)
         #And look for similar concept in self graph.
         print("=======================================================")
@@ -227,14 +249,12 @@ class AssociativeFallback(FallbackSkill):
                 self.concepts=[new_concept,closer_concept]
                 with open('./data/selfgraph.txt', 'w') as outfile:# update self graph:
                     json.dump(self.graph, outfile)
-                phrase="Oh. This is interesting."
-                self.speak(phrase)
+                self.speak(random.choice(self.MSG_INTEREST))
             else:
                 print("Did not find a concept similar enough.")
         #Has not find a new concept interesting him. Will Look about two self concepts online. or one ?
         if no_new_concept or (not if_added_concept):
-            self.speak("I am not interested by this question. ")
-            self.speak("But let me tell you what I am interested about.")
+            self.speak(random.choice(self.MSG_NOINTEREST))
             concepts=self.graph.keys()#his self-graph
             self.concepts=[random.choice(list(concepts))] #Or pick last?
             self.concepts.append(self.concepts[0])#append with same
@@ -248,9 +268,11 @@ class AssociativeFallback(FallbackSkill):
         print("=======================================================")
         #Form query and Scrap online space
         query= self.concepts[0]+ " "+ self.concepts[1]
-        interest="I wonder how " + self.concepts[0]+ " and "+ self.concepts[1] + " come together ."
-        self.speak(interest)
-        print(interest+ "\n"+ "Now surfing the online space...")
+        come_together=random.choice(self.MSG_COMETOGETHER)
+        come_together.replace("xxx",self.concepts[0])
+        come_together.replace("yyy",self.concepts[1])
+        self.speak(come_together)
+        print(come_together+ "\n"+ "Now surfing the online space...")
         nb_char_extract=BOUND_CHAR_EXTRACT+random.randint(-BOUND_CHAR_EXTRACT_VARIANCE, BOUND_CHAR_EXTRACT_VARIANCE)
         #FOR TESTING ONLY TEMP REMOVE SCRAPER
         scraped_data, extract=[], "blue whales surfing USA "
@@ -267,7 +289,7 @@ class AssociativeFallback(FallbackSkill):
         print("=======================================================")
         print("step 5---Share what found")
         print("=======================================================")
-        self.speak("Let me share what I found while surfing the online space.")
+        self.speak(random.choice(self.MSG_SHARE))
         self.speak(self.extracts[0])
         #wait_while_speaking()#TODO: CHECK WITH WAIT WHILE SPEAKING
 
@@ -276,8 +298,7 @@ class AssociativeFallback(FallbackSkill):
         print("step 6----Ask for human opinion")
         print("=======================================================")
         self.state_interaction="opinion"
-        ask_opinion="What do you think about it ?"
-        self.speak(ask_opinion)
+        self.speak(random.choice(self.MSG_ASKOPINION))
         timeout_start=time.time()
         print("Waiting for human opinion (or anything)...")
 
@@ -292,18 +313,23 @@ class AssociativeFallback(FallbackSkill):
         print("=======================================================")
         #(7) Pick a new concept from human opinion:
         OKWikipedia, self.graph=extractWiki(human_bla, self.graph, self.data["memory"], MAX_PICK_WORD)
-        print("Words extracted from human opinion:", OKWikipedia)
-    
+        OKWordnet, self.graph=extractWordnet(human_bla, self.graph, self.data["memory"], MAX_PICK_WORD)
+        print("Words extracted from human opinion with wiki:", OKWikipedia)
+        print("Words extracted from human opinion with wordnet:", OKWordnet)
+
         if OKWikipedia==[]:#CASE A where empty: AS SUCH STILL WOULD GIVE HIS OPINION 
             print("Did not find anything interesting in this opinion.")
-            message="Noted. But I dont see how this is interesting."
-            self.speak(message)
+            #self.speak(random.choice(self.MSG_NOTED)) No already above...
 
         else: #CASE B where found new concept
             self.concepts.append(random.choice(OKWikipedia))
+            #TODO: SHOULD ALSO TAKE A CONCEPT WHICH IS SIMILAR ENOUGH TEHRE?>>>>
             print("Picked a new concept:", self.concepts[2])
-            message="Ah. Interesting. I wonder how {} is related to {} and {}".format(self.concepts[2], self.concepts[0], self.concepts[1])
-            self.speak(message)
+            come_together=random.choice(self.MSG_COMETOGETHER3)
+            come_together.replace("zzz",self.concepts[2])
+            come_together.replace("xxx",self.concepts[0])
+            come_together.replace("yyy",self.concepts[1])
+            self.speak(come_together)
             #Update self.memory with this concept and save data
             self.data["memory"].append(self.concepts[2])
             with open('./data/selfdata.txt', 'w') as outfile:
@@ -329,7 +355,7 @@ class AssociativeFallback(FallbackSkill):
             print("step 9----Share what found online ")
             print("=======================================================")
             #(10) Say a bit of the article about what found online
-            self.speak("Let me share what I just found.")
+            self.speak(random.choice(self.MSG_SHARE))
             self.speak(self.extracts[1])
 
 
