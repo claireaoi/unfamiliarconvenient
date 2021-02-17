@@ -21,7 +21,7 @@ from os import path
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 #Import from other scripts
 import scraper
-from utils import loadSelf, extractWiki, isSelf, extractWordnet
+from utils import loadSelf, extractWiki, isSelf, extract, extractWordnet
 
 #***********************************************************************PARAMETERS***************************************************************************
 
@@ -223,7 +223,7 @@ class AssociativeFallback(FallbackSkill):
         print("=======================================================")
         OKWikipedia, self.graph=extractWiki(human_bla, self.graph, self.data["memory"], MAX_PICK_WORD)
         #TODO ALTERNATIVE EXTRACTION, CHOOSE WHICH ONE and if so replace
-        OKWordnet, self.graph=extractWordnet(human_bla, self.graph, self.data["memory"], MAX_PICK_WORD)
+        OKWordnet, self.graph=extract(human_bla, self.graph, self.data["memory"], MAX_PICK_WORD)
         print("Words extracted from human blabla with wiki:", OKWikipedia)
         print("Words extracted from human blabla with wordnet:", OKWordnet)
 
@@ -313,7 +313,7 @@ class AssociativeFallback(FallbackSkill):
         print("=======================================================")
         #(7) Pick a new concept from human opinion:
         OKWikipedia, self.graph=extractWiki(human_bla, self.graph, self.data["memory"], MAX_PICK_WORD)
-        OKWordnet, self.graph=extractWordnet(human_bla, self.graph, self.data["memory"], MAX_PICK_WORD)
+        OKWordnet, self.graph=extract(human_bla, self.graph, self.data["memory"], MAX_PICK_WORD)
         print("Words extracted from human opinion with wiki:", OKWikipedia)
         print("Words extracted from human opinion with wordnet:", OKWordnet)
 

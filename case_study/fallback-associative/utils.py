@@ -210,6 +210,60 @@ def extractWordnet(blabla, self_graph, memory,  max_pick_word):
 
 
 
+def extract(blabla, self_graph, memory,  max_pick_word):
+    """
+        Extract wordnet nouns (or proper noun) from a blabla, which are not on the memory, nor on the selGraph, nor in excluded
+        TAKE ALSO WIKIPEDIA STILL
+        Self Quest bounded to a maximum of max_pick_word to avoid too long wait. Beware, of found wikipediable word!
+        Beware of upper or lower letters which can create conflicts.
+        #TODO: Test Edge Cases
+       
+    """
+    OKWordnet=[]
+    wn_lemmas = set(wordnet.all_lemma_names())#TODO: SHALL LOAD IT ONLY ONCE???
+    if len(blabla)==0: #empty
+        print("No new words to grow from.")
+        return OKWordnet, self_graph
+    else:
+        counter=0#count words added
+        for word, pos in nltk.pos_tag(word_tokenize(blabla)):
+            if counter<max_pick_word:#Stop once has enough words
+                if pos in ['NN', 'NNS','NNP']:
+                    if not word.isupper():#To avoid turning words like AI lower case. Else turn to lower case. Ex: donald_trump
+                        word=word.lower()
+                    #TODO: Need Lemmatizer to avoid words which have same roots?
+                    if ((word in wn_lemmas) or (wikipedia.page(word).exists())) and not (word in OKWordnet):
+                        if word in self_graph.keys():#Word is there, augment its weight.
+                            self_graph[word][0]=self_graph[word][0]*1.1
+                        else: #TODO: Shall exclude memory ?
+                            OKWordnet.append(word)
+                            counter+=1
+        #Special case of duo words for wikipedia, such as global_warming https://en.wikipedia.org/wiki/Global_warming
+        #FOR THESE, use wikipedia!
+        wordList=blabla.split()#then need word.strip(string.punctuation)
+        token_list=nltk.pos_tag(word_tokenize(blabla))
+        counter=0
+        for token1, token2 in zip(token_list, token_list[1:]):#Consecutive token
+            word1, pos1=token1
+            word2, token2=token2
+            if counter<max_pick_word and len(word1)>1 and len(word2)>1 and (word1 not in excluded) and (word2 not in excluded):#Stop once has enough words
+                if not word1.isupper(): #lower letter unless fully upper letter:check for proper noun
+                    word1=word1.lower()
+                if not word2.isupper(): #lower letter unless fully upper letter
+                    word2=word2.lower()
+                duo=word1+" "+word2
+                if wikipedia.page(duo).exists() and not (duo in OKWordnet):
+                    if duo in self_graph.keys():
+                        self_graph[duo][0]=self_graph[duo][0]*1.1
+                    else:
+                        OKWordnet.append(duo)
+                        counter+=1
+        print("New words to learn from", OKWordnet)
+        return OKWordnet, self_graph
+
+
+
+
 #***********************************************************************PROCEDURES to INIT GRAPH***************************************************************************
 
 

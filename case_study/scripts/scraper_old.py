@@ -16,14 +16,6 @@ from googleapiclient.discovery import build #METHOD 1 with BUILD and google_sear
 from configparser import ConfigParser
 import random
 from utils import crop_unfinished_sentence
-import spacy
-from string import punctuation
-from googlesearch import search
-import newspaper
-import nltk
-from random import randint
-from time import sleep
-from urllib.error import URLError
 
 #***********************************************************************PARAMETERS INITIALIZATION***************************************************************************
 
@@ -99,152 +91,19 @@ def get_urls(data):
     """
         Parse the data obtained from Google API to get the urls of these articles.
     """
+    # get the result items
     search_items = data.get("items")
     urls=[]
     for i, search_item in enumerate(search_items, start=1):
         title = search_item.get("title")
         link = search_item.get("link")
+        #Print the results
+        #print("="*10, f"Result #{i+start-1}", "="*10)
+        #print("Title:", title)
+        #print("URL:", link, "\n")
         urls.append(link)
     return urls
 
-def retrieve_google_url(query):
-    #TODO: INCORPORATE ALTERNATIVE GOOGLE RETRIEVAL instead of above  two procedures?
-    # query search terms on google
-    # tld: top level domain, in our case "google.com"
-    # lang: search language
-    # num: how many links we should obtain
-    # stop: after how many links to stop (needed otherwise keeps going?!)
-    # pause: if needing multiple results, put at least '2' (2s) to avoid being blocked)
-    try:
-        online_search = search(query, tld='com',
-                               lang='en', num=5, stop=3, pause=2)
-    except URLError:
-        pass
-    website_urls = []
-    for link in online_search:
-        website_urls.append(link)
-    # returns a list of links
-    return website_urls
-
-
-def parse_article(urls):
-    """
-    New procedure to extract text from articles.
-    """
-    articles=[]
-    for url in urls:
-        try:
-            # locate website
-            article = newspaper.Article(url)
-            # download website
-            print('Downloading ' + url)
-            article.download()
-            article_downloaded = True
-        #except requests.exceptions.RequestException:
-        #    print("Article download failed.")
-            # parse .html to normal text
-            article.parse()
-            # analyze text with natural language processing
-            article.nlp()
-            print("==================Article Scraped=====================================")
-            print(article)
-            # article.summary # no need
-            articles.append(article)
-    return articles
-
-
-def choose_extract(extracts):
-    """
-        Choose an extract of text among several. 
-        First filter it by a "is cool" procedure, to select only nice texts. (todo, cf. below)
-        Then, pick up randomly among the 3 longer cool extracts
-    """
-    cool_extracts=[]
-    cool_length=[]
-    for extract in extracts:
-        if isCool(extract):
-            cool_extracts.append(extract)
-            cool_length.append(len(extract))
-    #Get 3 longer cool extracts
-    nb_pick=min(3, len(cool_extracts))#Will pick 3 if nb cool exctracts >=3
-    longer_extracts=sorted(zip(cool_length, cool_extracts), reverse=True)[:nb_pick]#as sorted by default order from first argument when tuple
-    #Pick one randomly
-    chosen_extract=random.choice(longer_extracts)
-    return chosen_extract[1]#text part (first element is score)
-
-def isCool(text):
-    """
-    Has to try to judge if a text extract is cool.
-    #TODO: Do this procedure. if too much space between lines, bad, paragraph condensed are better or if too many special characters may be bad etc.
-    #notably if too much of : </div>
-    #For now temporary: count <> and if bigger than 20, say not cool. But need to implement filter_html first
-    """
-    nb_bad_stuff=text.count("<")
-    return bool(nb_bad_stuff<4)#CHECK THIS
-
-def cut_extract(extract, maximum_char):
-    """
-    Cut a text extract if above a certain nb character
-    """
-    bound_extract=extract[:maximum_char]
-    return  crop_unfinished_sentence(bound_extract)
-    
-#**********************************************************************MAIN PROCEDURE**************************************************************************
-
-
-def surf_google(query, min_char_bit, min_char_block, maximum_char):
-    """
-    Main procedure to scrap google result of a query: will scrap the urls first, then the texts of the articles, parse the text and choose
-    one of these extracts.
-
-    """
-    #TODO: If none result satisfying criteria (length etc), relaunch further pages? OR TAKE SMALLER TEXT
-
-    ###(0) Scrap data from Google Search
-    print("=======================================================")
-    print("Scraping Google results")
-    data = google_search(query, my_api_key, my_cse_id)
-    #print(data)
-    ###(1) Get urls
-    urls = get_urls(data)
-    print("=======================================================")
-    print("Getting urls")
-    #print(urls)
-    ###(2) Extract texts part
-    print("=======================================================")
-    print("Extracting the texts")
-    scraped_data=parse_article(urls) #extract_text(urls, min_char_bit, min_char_block)
-    #print(extracts)
-    ###(3) Choose one extract
-    print("=======================================================")
-    print("Choosing one Extract")
-    #TODO: Better choice there
-    chosen_extract=choose_extract(scraped_data)
-    #print(chosen_extract)
-    ###(4) Cut extract
-    print("=======================================================")
-    print("Final Extract")
-    final_extract=cut_extract(chosen_extract, maximum_char)
-    print(final_extract)
-   
-    return scraped_data, final_extract
-
-###LAUNCH IT to try. TEST SAVE
-surf_google("tiger extinct", min_char_bit, min_char_block, maximum_char)
-
-
-
-
-
-#*******************************************************************OLD PROCEDURES**************************************************************************
-#*******************************************************************OLD PROCEDURES**************************************************************************
-#*******************************************************************OLD PROCEDURES**************************************************************************
-#*******************************************************************OLD PROCEDURES**************************************************************************
-#*******************************************************************OLD PROCEDURES**************************************************************************
-#*******************************************************************OLD PROCEDURES**************************************************************************
-#*******************************************************************OLD PROCEDURES**************************************************************************
-#*******************************************************************OLD PROCEDURES**************************************************************************
-#*******************************************************************OLD PROCEDURES**************************************************************************
 
 def extractMainBlocks(blabla, min_char_block):
     """
@@ -279,24 +138,31 @@ def scrapsPage(url, min_char_bit, min_char_block):
             test_block+="==================="+t.parent.name+ "\n"+ t
     with open('./case_study/data/scraper_check.txt', "a") as f:#Add it to conversation historics
         f.write(test_block + "\n")
+
     #KEEP ONLY MAIN BLOCK OF TEXT FROM A PAGE
     output= extractMainBlocks(textPage, min_char_block) 
     return output
 
 def filter_bit(text,tag, min_char_bit):
     """
-    Filter one bit of text.
+        Filter one bit of text.
     #TODO: Check filters below...
-    #Issue with length filter is for tag like a etc where in the middle of a sentence...
-    #May do in future that check previous tag if p (so middle sentence assume), keep it if tag==a or tag==strong
-
     """
     if (text.count("<") > 2):#in case still code bits
         return None
     elif len(text)<min_char_bit:
+    #TODO: Issue with length filter is for tag like a etc where in the middle of a sentence...
+    #May do in future that check previous tag if p (so middle sentence assume), keep it if tag==a or tag==strong
         return None
     else:
         return text
+
+
+def filter_block(text):
+    """
+    #TODO: cf examples below, filter them.
+    """
+    return text
 
 def extract_text(urls, min_char_bit, min_char_block):
     extracts=[]
@@ -304,10 +170,93 @@ def extract_text(urls, min_char_bit, min_char_block):
         #print("new PAGE=======================================================")
         extract=scrapsPage(url, min_char_bit, min_char_block)
         #print("Scrapped Text", extract)
-        filtered_extract=extract#TODO: Filter
+        filtered_extract=filter_block(extract)
         if not filtered_extract is None:
             extracts.append(filtered_extract)
     return extracts
+
+def choose_extract(extracts):
+    """
+        Choose an extract of text among several. 
+        First filter it by a "is cool" procedure, to select only nice texts. (todo, cf. below)
+        Then, pick up randomly among the 3 longer cool extracts
+    """
+    cool_extracts=[]
+    cool_length=[]
+    for extract in extracts:
+        if isCool(extract):
+            cool_extracts.append(extract)
+            cool_length.append(len(extract))
+    #Get 3 longer cool extracts
+    nb_pick=min(3, len(cool_extracts))#Will pick 3 if nb cool exctracts >=3
+    longer_extracts=sorted(zip(cool_length, cool_extracts), reverse=True)[:nb_pick]#as sorted by default order from first argument when tuple
+    #Pick one randomly
+    chosen_extract=random.choice(longer_extracts)
+    return chosen_extract[1]#text part (first element is score)
+
+def isCool(text):
+    """
+    Has to try to judge if a text extract is cool.
+    #TODO: Do this procedure. if too much space between lines, bad, paragraph condensed are better or if too many special characters may be bad etc.
+    #notably if too much of : </div>
+    #For now temporary: count <> and if bigger than 20, say not cool. But need to implement filter_html first
+    """
+
+    nb_bad_stuff=text.count("<")
+
+    return bool(nb_bad_stuff<4)#CHECK THIS
+
+def cut_extract(extract, maximum_char):
+    """
+    Cut a text extract if above a certain nb character
+    """
+    bound_extract=extract[:maximum_char]
+    return  crop_unfinished_sentence(bound_extract)
+
+
+#**********************************************************************MAIN PROCEDURE**************************************************************************
+
+
+def surf_google(query, min_char_bit, min_char_block, maximum_char):
+    """
+    Main procedure to scrap google result of a query: will scrap the urls first, then the texts of the articles, parse the text and choose
+    one of these extracts.
+
+    """
+    #TODO: if none result satisfying criteria (length etc), relaunch further pages? OR TAKE SMALLER TEXT
+
+    ###(0) Scrap data from Google Search
+    print("=======================================================")
+    print("Scraping Google results")
+    data = google_search(query, my_api_key, my_cse_id)
+    #print(data)
+    ###(1) Get urls
+    urls = get_urls(data)
+    print("=======================================================")
+    print("Getting urls")
+    #print(urls)
+    ###(2) Extract texts part
+    print("=======================================================")
+    print("Extracting the texts")
+    #TODO: check if can accelerate this step
+    scraped_data=extract_text(urls, min_char_bit, min_char_block)
+    #print(extracts)
+    ###(3) Choose one extract
+    print("=======================================================")
+    print("Choosing one Extract")
+    chosen_extract=choose_extract(scraped_data)
+    #print(chosen_extract)
+    ###(4) Cut extract
+    print("=======================================================")
+    print("Final Extract")
+    final_extract=cut_extract(chosen_extract, maximum_char)
+    print(final_extract)
+   
+    return scraped_data, final_extract
+
+###LAUNCH IT to try. TEST SAVE
+#surf_google("tiger bubble", min_char_bit, min_char_block, maximum_char)
+
 
 
 #**********************************************************************OLD ARXIV*************************************************************************
