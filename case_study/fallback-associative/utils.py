@@ -36,14 +36,16 @@ import nltk
 from nltk import word_tokenize, sent_tokenize, pos_tag
 from nltk.corpus import words, wordnet
 from nltk.stem.wordnet import WordNetLemmatizer
-nltk.download('wordnet')#first_time only
-nltk.download('wordnet_ic')
-nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')
+#only if not installed:
+#nltk.download('wordnet')#first_time only
+#nltk.download('wordnet_ic')
+#nltk.download('punkt')
+#nltk.download('averaged_perceptron_tagger')
 lemmatizer = WordNetLemmatizer()
 import wikipediaapi
 wikipedia = wikipediaapi.Wikipedia('en')
 
+import pathlib
 #TODO: CLEAN THIS CODE
 
 #***********************************************************************PROCEDURES for FILTERING**************************************************************************
@@ -136,7 +138,7 @@ def extractWiki(blabla, self_graph, memory,  max_pick_word):
                     if not nextword.isupper():  #lower letter unless fully upper letter
                         nextword=nextword.lower()
                     duo=word+" "+nextword
-                    if len(word)>1 and len(nextword)>1 and word not in excluded and nextword not in excluded and not hasNumbers(word) and not hasNumbers(nextword) and wikipedia.page(duo).exists() and not (duo in OKWikipedia) and not disambiguationPage(duo):
+                    if len(word)>1 and len(nextword)>1 and word not in excluded and nextword not in excluded and not hasNumbers(word) and not hasNumbers(nextword) and wikipedia.page(duo).exists() and (not (duo in OKWikipedia)) and (not disambiguationPage(duo)):
                         if duo in self_graph.keys():
                             self_graph[duo][0]=self_graph[duo][0]*1.1
                         elif duo.lower() in self_graph.keys():
@@ -316,14 +318,14 @@ def hatchSelf(max_pick_word, threshold_similarity):
          Hatch (build) the self Graph from hatchVA.txt
     """
     # (0) Load the Initial list of words to hatch the VA self_graph: in hatcHVA.txt
-    with open('./data/hatchVA.txt') as f:
+    with open(str(pathlib.Path(__file__).parent.absolute())+'/data/hatchVA.txt') as f:
         rawVA= ''.join(f.readlines())
 
     #(1) Extract wikipedia-ble words from these texts and put them in a waiting List, and start a self_graph which is a dictionnary in Python
     # For now, only with Wikipedia. Could add wiktionary.
-    selfConcepts, voidGraph=extractWiki(rawVA, dict(), [], max_pick_word)
+    selfConcepts, voidGraph=extractWiki(rawVA, dict(), [], max_pick_word)#TODO OR EXTRACT NORMAL?
     #Record this in a text file
-    fileW = open("./data/wiki.txt","w")
+    fileW = open(str(pathlib.Path(__file__).parent.absolute())+"/data/wiki.txt","w")
     #print('writing wiki files')
     fileW.writelines(elt + "\n" for elt in selfConcepts)
     fileW.close()
@@ -344,23 +346,29 @@ def hatchSelf(max_pick_word, threshold_similarity):
     #This step may take time, according the length of the list.
     nEdge=connectNodes(self_graph, threshold_similarity)
 
-    #(4) Save it, in both selfbirth.txt and selfgraph.txtm to keep always initial graph in memory.
-    with open('./data/selfbirth.txt', 'w') as outfile:
-        json.dump(self_graph, outfile)
-    with open('./data/selfgraph.txt', 'w') as outfile:
-        json.dump(self_graph, outfile)
-
-   #(5) init Memory as the list of keys. With as first element an index to keep track to where we are writing in the memory.
-   #As the memory will be bounded
+    # (4) Init Memory and self data consisting of lifetime and memory
+    #init Memory as the list of keys. With as first element an index to keep track to where we are writing in the memory.
     memory=list(self_graph.keys()) #The memory of the VA is the words it has looked for on wikipedia.
-    wo=memory[0]#To remember where is oldest word
-    memory[0] = str(len(memory))
-    memory.append(wo)
+    #wo=memory[0]#To remember where is oldest word    #TODO: As the memory will be bounded
+    #memory[0] = str(len(memory))
+    #memory.append(wo)
+    self_data = dict.fromkeys(["lifetime", "memory"])
+    self_data["lifetime"],self_data["memory"]=0, memory
 
+    #(5) Save it, in both selfbirth.txt and selfgraph.txtm to keep always initial graph in memory.
+    with open(str(pathlib.Path(__file__).parent.absolute())+'/data/birthgraph.json', 'w') as outfile:
+        json.dump(self_graph, outfile)
+    with open(str(pathlib.Path(__file__).parent.absolute())+'/data/graph.json', 'w') as outfile:
+        json.dump(self_graph, outfile)
+    with open(str(pathlib.Path(__file__).parent.absolute())+'/data/selfdata.json', 'w') as outfile:
+        json.dump(self_data, outfile)
+
+   #(6) Description
     mesh=(nEdge-nNode+1) / (2*nNode-5)
     description="Self is born. Self is a network with {} concepts and {} connections. My meshedness coefficient is {} .".format(nNode, nEdge, round(mesh,3))
 
-    return self_graph, memory, description
+    return self_graph, self_data, description
+
 
 #***********************************************************************PROCEDURES to LOAD SELF***************************************************************************
 
@@ -371,18 +379,15 @@ def loadSelf(first_run, max_pick_word, threshold_similarity):
     """
     if first_run:
         print("Hatching self in process...")
-        self_graph, memory, description=hatchSelf(max_pick_word, threshold_similarity)
-        self_data=dict()
-        self_data["lifetime"],self_data["memory"]=0, memory
+        self_graph, self_data, description=hatchSelf(max_pick_word, threshold_similarity)
     else:
-        with open('./data/selfgraph.txt', 'r') as json_file:
+        with open(str(pathlib.Path(__file__).parent.absolute())+'/data/selfgraph.txt', 'r') as json_file:
             self_graph = json.load(json_file)
-        with open('./data/selfdata.txt', "r") as json_file:
+        with open(str(pathlib.Path(__file__).parent.absolute())+'/data/selfdata.txt', "r") as json_file:
             self_data=json.load(json_file)
         print("I am here. My lifetime is {} interactions".format(str(self_data["lifetime"])))
-
+        
     return self_graph, self_data
-
 
 #***********************************************************************PROCEDURES to GROW SELF***************************************************************************
 
@@ -498,7 +503,7 @@ def drawGraph(G):
     #Rendering via Graphviz. >>Draw Attributes!
     A.layout('dot')
     #Saving
-    A.draw('./data/self_graph.png')
+    A.draw(str(pathlib.Path(__file__).parent.absolute())+'/data/self_graph.png')
     #Show Image
-    img=Image.open('./data/self_graph.png')
+    img=Image.open(str(pathlib.Path(__file__).parent.absolute())+'/data/self_graph.png')
     img.show()

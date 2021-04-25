@@ -12,10 +12,9 @@ import lxml
 import cssselect
 import sys
 import subprocess 
-from googleapiclient.discovery import build #METHOD 1 with BUILD and google_search function
+from googleapiclient.discovery import build #METHOD 1 with BUILD and google_search function for previous scraper
 from configparser import ConfigParser
 import random
-from utils import crop_unfinished_sentence
 import spacy
 from string import punctuation
 from googlesearch import search
@@ -24,12 +23,16 @@ import nltk
 from random import randint
 from time import sleep
 from urllib.error import URLError
+import pathlib
+
+from .utils import crop_unfinished_sentence
+
 
 #***********************************************************************PARAMETERS INITIALIZATION***************************************************************************
 
 ####LOAD CONFIG PARAMETERS
 config = ConfigParser()
-config.read('./case_study/data/config.ini') 
+config.read(str(pathlib.Path(__file__).parent.absolute())+'/data/config.ini') 
 my_api_key = config.get('auth', 'my_api_key')
 my_cse_id = config.get('auth', 'my_cse_id')
 
@@ -88,7 +91,8 @@ blacklist = [
 
 def google_search(search_term, api_key, cse_id, **kwargs):
     """
-        Use Google Search API to get Google results over a query
+         Use Google Search API to get Google results over a query
+         Old procedure!
     """
     service = build("customsearch", "v1", developerKey=api_key)
     res = service.cse().list(q=search_term, cx=cse_id, **kwargs).execute()
@@ -107,7 +111,7 @@ def get_urls(data):
         urls.append(link)
     return urls
 
-def retrieve_google_url(query):
+def retrieve_google_url(query, num_links=8):
     #TODO: INCORPORATE ALTERNATIVE GOOGLE RETRIEVAL instead of above  two procedures?
     # query search terms on google
     # tld: top level domain, in our case "google.com"
@@ -116,8 +120,7 @@ def retrieve_google_url(query):
     # stop: after how many links to stop (needed otherwise keeps going?!)
     # pause: if needing multiple results, put at least '2' (2s) to avoid being blocked)
     try:
-        online_search = search(query, tld='com',
-                               lang='en', num=5, stop=3, pause=2)
+        online_search = search(query, tld='com', lang='en', num=num_links, stop=num_links, pause=2)
     except URLError:
         pass
     website_urls = []
@@ -127,44 +130,58 @@ def retrieve_google_url(query):
     return website_urls
 
 
+def parse_one_article(url):
+    article=""
+    try:
+        # locate website
+        article = newspaper.Article(url)
+        # download website
+        print('Downloading ' + url)
+        article.download()
+        article_downloaded = True
+        # parse .html to normal text
+        article.parse()
+        # analyze text with natural language processing
+        #article.nlp()
+        print("==================Article Scraped=====================================")
+        print(article)
+        return article.text
+    except requests.exceptions.RequestException:
+        print("Article download failed.")
+        return ""
+
+
 def parse_article(urls):
     """
     New procedure to extract text from articles.
     """
     articles=[]
+    count=0
     for url in urls:
-        try:
-            # locate website
-            article = newspaper.Article(url)
-            # download website
-            print('Downloading ' + url)
-            article.download()
-            article_downloaded = True
-        #except requests.exceptions.RequestException:
-        #    print("Article download failed.")
-            # parse .html to normal text
-            article.parse()
-            # analyze text with natural language processing
-            article.nlp()
-            print("==================Article Scraped=====================================")
-            print(article)
-            # article.summary # no need
-            articles.append(article)
+        if count<4:#only 4 working links
+            try:
+                article=parse_one_article(url)
+                if article is not None and not article=="":
+                    articles.append(article)
+                    count+=1
+            except:
+                continue
+
     return articles
 
 
 def choose_extract(extracts):
     """
-        Choose an extract of text among several. 
-        First filter it by a "is cool" procedure, to select only nice texts. (todo, cf. below)
-        Then, pick up randomly among the 3 longer cool extracts
+    Choose an extract of text among several. 
+    First filter it by a "is cool" procedure, to select only nice texts. (todo, cf. below)
+    Then, pick up randomly among the 3 longer cool extracts
     """
     cool_extracts=[]
     cool_length=[]
     for extract in extracts:
-        if isCool(extract):
-            cool_extracts.append(extract)
-            cool_length.append(len(extract))
+        #if isCool(extract):
+        cool_extracts.append(extract)
+        cool_length.append(len(extract))
     #Get 3 longer cool extracts
     nb_pick=min(3, len(cool_extracts))#Will pick 3 if nb cool exctracts >=3
     longer_extracts=sorted(zip(cool_length, cool_extracts), reverse=True)[:nb_pick]#as sorted by default order from first argument when tuple
@@ -179,8 +196,8 @@ def isCool(text):
     #notably if too much of : </div>
     #For now temporary: count <> and if bigger than 20, say not cool. But need to implement filter_html first
     """
-    nb_bad_stuff=text.count("<")
-    return bool(nb_bad_stuff<4)#CHECK THIS
+    #nb_bad_stuff=text.count("<")
+    return True #bool(nb_bad_stuff<4)#CHECK THIS
 
 def cut_extract(extract, maximum_char):
     """
@@ -199,11 +216,11 @@ def surf_google(query, min_char_bit, min_char_block, maximum_char):
 
     """
     #TODO: If none result satisfying criteria (length etc), relaunch further pages? OR TAKE SMALLER TEXT
-
     ###(0) Scrap data from Google Search
     print("=======================================================")
-    print("Scraping Google results")
-    data = google_search(query, my_api_key, my_cse_id)
+    print("Scraping Google results and get urls")
+    data = google_search(query, api_key=my_api_key, cse_id=my_cse_id)
+    #retrieve_google_url(query, num_links=8)#TODO other scraper but issue?
     #print(data)
     ###(1) Get urls
     urls = get_urls(data)
@@ -230,7 +247,7 @@ def surf_google(query, min_char_bit, min_char_block, maximum_char):
     return scraped_data, final_extract
 
 ###LAUNCH IT to try. TEST SAVE
-surf_google("tiger extinct", min_char_bit, min_char_block, maximum_char)
+#surf_google("tiger extinct", min_char_bit, min_char_block, maximum_char)
 
 
 
@@ -273,12 +290,12 @@ def scrapsPage(url, min_char_bit, min_char_block):
             if textBit is not None:
                 textPage += '{} '.format(textBit)
     #JUST HERE TO CHECK BLOCK TYPE HTML, COMMENT OUT THEN
-    test_block=""
-    for t in text:
-        if (not (t.parent.name in blacklist)) and len(t)>min_char_bit and (t.count("<") < 2):
-            test_block+="==================="+t.parent.name+ "\n"+ t
-    with open('./case_study/data/scraper_check.txt', "a") as f:#Add it to conversation historics
-        f.write(test_block + "\n")
+    #test_block=""
+    #for t in text:
+    #    if (not (t.parent.name in blacklist)) and len(t)>min_char_bit and (t.count("<") < 2):
+    #        test_block+="==================="+t.parent.name+ "\n"+ t
+    #with open(str(pathlib.Path(__file__).parent.absolute())+'/data/scraper_check.txt', "a") as f:#Add it to conversation historics
+    #    f.write(test_block + "\n")
     #KEEP ONLY MAIN BLOCK OF TEXT FROM A PAGE
     output= extractMainBlocks(textPage, min_char_block) 
     return output
