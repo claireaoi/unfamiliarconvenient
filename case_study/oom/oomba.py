@@ -3,11 +3,18 @@ import json
 import math
 import numpy as np
 import random
+import matplotlib.pyplot as plt
+
+from sklearn.manifold import TSNE
+import seaborn as sns
+import pandas as pd
+
 
 GRAPH_FILE="graph.json"
-
-#TODO: Retrieve gpt2 embeddings
-#TODO: Modify gpt2 embeddings, save them for later use!
+#TODO: What trigger this ?
+#TODO: Retrieve gpt2 embeddings and Modify gpt2 embeddings, save them for later use!
+#TODO: Visualisation
+#TODO Haiku gene
 
 ##************************************(0) PRELUDE to the READING **********
 
@@ -20,16 +27,20 @@ def tsne_embedding(points):
         embeddings: 2D embeddings of each of these points, after a tSNE projection (or other dimensionality reduction technique )
     """
     num_points=len(points)
-    #TODO: TSNE
-    embeddings_2D=[np.random.rand((2)) for _ in range(num_points)]
+    array=np.array(points)
+    
+    #---1 compute 2D embeddings with TSNE
+    embeddings_2D=TSNE(n_components=2).fit_transform(array)
+    #NOTE: may tweak param such as perplexity, early_exaggeration, learning_rate etc, https://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html
+    #TODO: Shall normalize these poonts?
     return embeddings_2D
 
 
-def self_graph_embeddings(words_vectors):
+def self_graph_embeddings(words_embeddings):
     """
     Project the concepts of the self graph, once retrieved the embeddings vectors used for gpt2
     Input:
-        words_vectors: list of vectors in high dimension
+        words_embeddings: dictionary of words & vectors in high dimension 
     Outputs:
         concepts: list of keys of the graph
         embeddings: 2D embeddings of each of concepts in self concept
@@ -38,13 +49,29 @@ def self_graph_embeddings(words_vectors):
     # #--0-load self graph
     # self_graph=load_data_json(GRAPH_FILE)
     
-    # #-1--concepts
+    # #-1--get concepts in self
     # concepts=self_graph.keys()
-    #Comment as soon as load self graoh
-    concepts=["cotton pad", "oulala", "bucket"]
 
-    #3---turn these vectors into an embedding
-    embeddings2D=tsne_embedding(words_vectors)
+    concepts=["cotton pad", "oulala", "bucket"] #TEMPORARY while did not leoad, comment as soon as load self graoh
+
+    #-2--retrieve the vectors attached to these concepts
+    concepts_vectors=[words_embeddings[word] for word in concepts]
+
+    #-3---turn these vectors into a 2D embedding
+    embeddings2D=tsne_embedding(concepts_vectors)
+    
+
+    #-4--- Visualize it
+    data = pd.DataFrame(embeddings2D, columns=["x", "y"])# columns = concepts)
+    sns.set_context("notebook", font_scale=1.1)
+    sns.set_style("ticks")
+    #sns.color_palette("hls", 8)
+    #each column is a variable and each row is an observation.
+    sns.lmplot(x="x", y="y", palette="pastel", data=data)
+    #x,y should be column name in data
+    plt.title('Self 2D Embeddings',weight='bold').set_fontsize('14')
+    plt.show()
+    #TODO: Save...
 
     return concepts, embeddings2D
 
@@ -78,7 +105,9 @@ def reading(trajectory):
 
     #-1--compute self embeddings with tsne
     print("***Generating 2D embeddings of Self***")
-    self_concepts, embeddings2D=self_graph_embeddings(words_vectors)
+    self_concepts, embeddings2D=self_graph_embeddings(words_embeddings)
+
+    #TODO: picture points, maybe too far apart, has to rescale them between -1 and 1 ?
 
     #-2--- simplify pattern: if 3 consecutive points +/- aligned, remove the one in the middle
     print("***Simplifying trajectory***")
@@ -98,8 +127,8 @@ def reading(trajectory):
     print("Original trajectory length {} cleaned trajectory length {}".format( num_points_init,  num_points))
 
     #-3---extract subpattern if still too many points
-    max_num_points=6 #TBD
-    #TODO: How choose which part extract? Random?
+    max_num_points=7 #TBD
+    #NOTE: How choose which part extract? Random?
     extracted_trajectory=cleaned_trajectory
     if len(cleaned_trajectory)>max_num_points:
         start=random.randint(0,num_points-max_num_points)
@@ -114,23 +143,29 @@ def reading(trajectory):
         if (not (i == 0)) and (not (i == max_num_points-1)):
             idx, dist=find_nearest_concepts(embeddings2D, point)
             key=list(words_embeddings.keys())[idx] #get corresponding concept
-            close_concepts.append(key)
-            distances.append(dist)
+            if key not in close_concepts:
+                close_concepts.append(key)
+                distances.append(dist)
+            else:#update distance
+                j=close_concepts.index(key)
+                distances[j]=min(distances[j], dist)
+    #TODO: save also point it is closer too 
     assert len(distances)==len(close_concepts)
 
     #-4---extract 3 closer concepts 
     indices=np.argsort(distances)[:3]
     trinity=[close_concepts[i] for i in indices]
     print("The 3 closer self concepts for this event are {}".format(trinity))
+    #TODO check not same or 
 
     #-5---redefine embeddings of these 3 concepts
     print("***Reassessing Beliefs***")
-    words_embeddings=redefine_embeddings(words_embeddings, trinity)
+    #TODO: modify the embeddings
 
     return trinity, words_embeddings
 
 ##*********************************** (2) INTERPRETATION **********
-
+#TODO: HAIKU generatiom either generaive or ML train on haiku
 
 ##*********************************** (3) REDEFINING the SEMANTIC SPACE **********
 def redefine_embeddings(embeddings, trinity):
