@@ -48,13 +48,66 @@ wikipedia = wikipediaapi.Wikipedia('en')
 import pathlib
 #TODO: CLEAN THIS CODE
 
-#***********************************************************************PROCEDURES for FILTERING**************************************************************************
+
+#***********************************************************************************************************************************************
+#***********************************************************************************************************************************************
+#**********************************************************************LOAD PROCEDURES**************************************************************************
+#***********************************************************************************************************************************************
+
+
+def load_data_json(filename):
+    folder_skill="/home/unfamiliarconvenient/.mycroft/fallback-associative/"
+    with open(folder_skill+filename) as json_file:
+        data = json.load(json_file)
+    return data
+
+def load_data_txt(filename, path_folder="", mode="r"):
+    """
+    for messages in skill, load txt
+    """
+    with open(path_folder+filename,  mode=mode) as f:
+        data = f.readlines()
+    return data
+    
+#***********************************************************************************************************************************************
+#***********************************************************************************************************************************************
+#*********************************************************************FILTERING PROCEDURES**************************************************************************
+#***********************************************************************************************************************************************
+
+def choose_extract(extracts):
+    """
+    Choose an extract of text among several. 
+    First filter it by a "is cool" procedure, to select only nice texts. (todo, cf. below)
+    Then, pick up randomly among the 3 longer cool extracts
+    """
+    cool_extracts=[]
+    cool_length=[]
+    for extract in extracts:
+        cool_extracts.append(extract)
+        cool_length.append(len(extract))
+    #Get 3 longer cool extracts
+    nb_pick=min(3, len(cool_extracts))#Will pick 3 if nb cool exctracts >=3
+    longer_extracts=sorted(zip(cool_length, cool_extracts), reverse=True)[:nb_pick]#as sorted by default order from first argument when tuple
+    #Pick one randomly
+    chosen_extract=random.choice(longer_extracts)
+    return chosen_extract[1]#text part (first element is score)
+
+def cut_extract(extract, maximum_char):
+    """
+    Cut a text extract if above a certain nb character
+    """
+    
+    #TODO: Choose bigger paragraph from page 
+    extract=" ".join(extract.split())#remove extra white space
+    bound_extract=extract[:maximum_char] #trim if longer than wanted #TODO:take beginning or end?
+    return bound_extract #crop_unfinished_sentence(bound_extract)#TODO Issue when not capital, and space differently etc.
 
 
 def crop_unfinished_sentence(text):
     """
     Remove last unfinished bit from text. 
     """
+    #TODO: better?
     #SELECT FROM THE RIGHT rindex s[s.rindex('-')+1:]  
     stuff= re.split(r'(?<=[^A-Z].[.!?]) +(?=[A-Z])', text)
 
@@ -62,15 +115,38 @@ def crop_unfinished_sentence(text):
     for i in range(len(stuff)):
         if i<len(stuff)-1:
             new_text+= " " + stuff[i]
-        elif stuff[i][-1] in [".", ":", "?", "!", ";"]:#only if last character ounctuation keep
+        elif len(stuff[i])>0 and (stuff[i][-1] in [".", ":", "?", "!", ";"]):#only if last character ounctuation keep
             new_text+= " " + stuff[i]
 
     return new_text
 
 
 
-#***********************************************************************PROCEDURES for wikipedia SearchH***************************************************************************
-
+#**********************************************************************************************************************
+#**********************************************PROCEDURES for wikipedia SearchH***************************************************************************
+from sematch.semantic.similarity import WordNetSimilarity
+wns = WordNetSimilarity()
+def semanticSimilarity(word1, word2):
+    """
+    Compute the semantic similarity between two words, as define by the library wnsm, and return score. Of course this is subjective. If word1 cmposed word: average similarity of its both elements.
+    """
+    score=0
+    splitWord=word1.split()
+        #Case of concepts made of several words
+    if len(splitWord)>1:
+        for elt in splitWord:
+            score+=semanticSimilarity(elt, word2)
+        score/=len(splitWord)
+    else:#word1 has 1 component
+        splitWord2=word2.split()
+        if len(splitWord2)>1:#case word2 has 2 component or more
+            for elt in splitWord2:#Else could take the max but would be non symmetic
+                score+=wns.word_similarity(word1, elt, 'li')
+            score/=len(splitWord2)
+        else:#case both concepts have only 1 word
+            score=wns.word_similarity(word1, word2, 'li')
+    #self.log.info('Similarity score between ' + word1 + ' and ' + word2 +": " + str(score))
+    return score
 
 def hasNumbers(inputString):
     return any(char.isdigit() for char in inputString)
@@ -507,3 +583,4 @@ def drawGraph(G):
     #Show Image
     img=Image.open(str(pathlib.Path(__file__).parent.absolute())+'/data/self_graph.png')
     img.show()
+

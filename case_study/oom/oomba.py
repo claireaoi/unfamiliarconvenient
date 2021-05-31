@@ -53,6 +53,8 @@ def self_graph_embeddings(words_embeddings):
     # concepts=self_graph.keys()
 
     concepts=["cotton pad", "oulala", "bucket"] #TEMPORARY while did not leoad, comment as soon as load self graoh
+    
+    num_concepts=len(concepts)
 
     #-2--retrieve the vectors attached to these concepts
     concepts_vectors=[words_embeddings[word] for word in concepts]
@@ -60,20 +62,22 @@ def self_graph_embeddings(words_embeddings):
     #-3---turn these vectors into a 2D embedding
     embeddings2D=tsne_embedding(concepts_vectors)
     
-
-    #-4--- Visualize it
-    data = pd.DataFrame(embeddings2D, columns=["x", "y"])# columns = concepts)
+    #4---rescale between max and min values#TODO: this depending size room or about depends scale use for other
+    MAX=20
+    scaled_embeddings2D=np.interp(embeddings2D, (embeddings2D.min(), embeddings2D.max()), (-MAX, MAX))
+    
+    #-5--- Visualize it
+    data = pd.DataFrame(scaled_embeddings2D, columns=["x", "y"])# columns = concepts)
     sns.set_context("notebook", font_scale=1.1)
     sns.set_style("ticks")
-    #sns.color_palette("hls", 8)
+    #sns.color_palette("hls", 8) #TODO: color palette need column...
     #each column is a variable and each row is an observation.
-    sns.lmplot(x="x", y="y", palette="pastel", data=data)
+    sns.lmplot(x="x", y="y", palette=sns.color_palette("pastel", n_colors=num_concepts), data=data, truncate=False).set(xlim=(-MAX-2, MAX+2), ylim=(-MAX-2, MAX+2))
     #x,y should be column name in data
     plt.title('Self 2D Embeddings',weight='bold').set_fontsize('14')
     plt.show()
-    #TODO: Save...
 
-    return concepts, embeddings2D
+    return concepts, scaled_embeddings2D
 
 
 
@@ -106,8 +110,6 @@ def reading(trajectory):
     #-1--compute self embeddings with tsne
     print("***Generating 2D embeddings of Self***")
     self_concepts, embeddings2D=self_graph_embeddings(words_embeddings)
-
-    #TODO: picture points, maybe too far apart, has to rescale them between -1 and 1 ?
 
     #-2--- simplify pattern: if 3 consecutive points +/- aligned, remove the one in the middle
     print("***Simplifying trajectory***")
@@ -166,6 +168,17 @@ def reading(trajectory):
 
 ##*********************************** (2) INTERPRETATION **********
 #TODO: HAIKU generatiom either generaive or ML train on haiku
+
+
+def haiku_generator(trinity):
+    """
+    Generate an haiku containing the words in trinity
+    """
+
+
+    return haiku
+
+
 
 ##*********************************** (3) REDEFINING the SEMANTIC SPACE **********
 def redefine_embeddings(embeddings, trinity):
