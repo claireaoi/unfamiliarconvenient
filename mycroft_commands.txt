@@ -1,0 +1,16 @@
+Where the skills are:
+mycroft-core/opt/mycroft/skills/
+
+Where the files should be saved if needed
+.mycroft/name_skill (ex: fallback_googaia)
+
+Where the logs are:
+/var/log/mycroft
+
+Use: xdg-open for instance and path
+
+
+./mycroft-core/start-mycroft.sh all
+./mycroft-core/start-mycroft.sh restart all
+./mycroft-core/start-mycroft.sh cli
+
