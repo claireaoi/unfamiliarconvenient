@@ -14,7 +14,7 @@ GRAPH_FILE="graph.json"
 #TODO: What trigger this ?
 #TODO: Retrieve gpt2 embeddings and Modify gpt2 embeddings, save them for later use!
 #TODO: Visualisation
-#TODO Haiku gene
+#TODO: Haiku gene Simplification
 
 ##************************************(0) PRELUDE to the READING **********
 
@@ -32,7 +32,10 @@ def tsne_embedding(points):
     #---1 compute 2D embeddings with TSNE
     embeddings_2D=TSNE(n_components=2).fit_transform(array)
     #NOTE: may tweak param such as perplexity, early_exaggeration, learning_rate etc, https://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html
-    #TODO: Shall normalize these poonts?
+    #NOTE: This is trajectory of point between -1 and 1, else as to change normalization other points...
+    print(np.max(np.abs(embeddings_2D)))
+    embeddings_2D= embeddings_2D/np.max(embeddings_2D, axis=0)#TODO this currently place them often on cirlce>>change!
+    print(embeddings_2D)
     return embeddings_2D
 
 
@@ -52,7 +55,7 @@ def self_graph_embeddings(words_embeddings):
     # #-1--get concepts in self
     # concepts=self_graph.keys()
 
-    concepts=["cotton pad", "oulala", "bucket"] #TEMPORARY while did not leoad, comment as soon as load self graoh
+    concepts=["cotton pad", "oulala", "bucket", "yellow submarine", "dragonfruit", "waste", "carioca", "amino acids"] #TEMPORARY while did not leoad, comment as soon as load self graoh
     
     num_concepts=len(concepts)
 
@@ -62,7 +65,8 @@ def self_graph_embeddings(words_embeddings):
     #-3---turn these vectors into a 2D embedding
     embeddings2D=tsne_embedding(concepts_vectors)
     
-    #4---rescale between max and min values#TODO: this depending size room or about depends scale use for other
+    #4---rescale between max and min values
+    #TODO: this depending size room or about depends scale use for other
     MAX=20
     scaled_embeddings2D=np.interp(embeddings2D, (embeddings2D.min(), embeddings2D.max()), (-MAX, MAX))
     
@@ -104,6 +108,11 @@ def reading(trajectory):
     words_embeddings["moonson"]=np.random.rand((dim_words))
     words_embeddings["bucket"]=np.random.rand((dim_words))
     words_embeddings["oulala"]=np.random.rand((dim_words))
+    words_embeddings["yellow submarine"]=np.random.rand((dim_words))
+    words_embeddings["waste"]=np.random.rand((dim_words))
+    words_embeddings["dragonfruit"]=np.random.rand((dim_words))
+    words_embeddings["carioca"]=np.random.rand((dim_words))
+    words_embeddings["amino acids"]=np.random.rand((dim_words))
     #--get only vectors from dictionary
     words_vectors=list(words_embeddings.values()) 
 
@@ -139,28 +148,33 @@ def reading(trajectory):
 
     #-4---find closer words to each of these points
     print("***Interpreting Trajectory; extracting closer concepts***")
-    close_concepts=[]
-    distances=[]
+    close_concepts, distances, trajectory_points=[], [], []
     for i, point in enumerate(extracted_trajectory):
         if (not (i == 0)) and (not (i == max_num_points-1)):
-            idx, dist=find_nearest_concepts(embeddings2D, point)
+            idx, dist=nearest_concept(embeddings2D, point)
             key=list(words_embeddings.keys())[idx] #get corresponding concept
+            print(i, point, idx, key)
             if key not in close_concepts:
                 close_concepts.append(key)
                 distances.append(dist)
-            else:#update distance
+                trajectory_points.append(point)#point from traj is closer to
+            else:#TODO: currently too often same concept closer to all>>> change this! Rather ok if same?
                 j=close_concepts.index(key)
-                distances[j]=min(distances[j], dist)
-    #TODO: save also point it is closer too 
-    assert len(distances)==len(close_concepts)
+                if dist<distances[j]:#update distance #although risk one closer to several
+                    distances[j]=dist
+                    trajectory_points[j]=point
+    assert len(distances)==len(close_concepts)==len(trajectory_points)
 
     #-4---extract 3 closer concepts 
     indices=np.argsort(distances)[:3]
     trinity=[close_concepts[i] for i in indices]
+    trinity_trajectory=[trajectory_points[i] for i in indices]
     print("The 3 closer self concepts for this event are {}".format(trinity))
-    #TODO check not same or 
+    print("They correspond to the 3 points in the trajectory {}".format(trinity_trajectory))
 
-    #-5---redefine embeddings of these 3 concepts
+    #--5-------draw trinity---
+    draw(extracted_trajectory, trinity_trajectory, "Blip")
+    #---6---redefine embeddings of these 3 concepts
     print("***Reassessing Beliefs***")
     #TODO: modify the embeddings
 
@@ -174,7 +188,7 @@ def haiku_generator(trinity):
     """
     Generate an haiku containing the words in trinity
     """
-
+    
 
     return haiku
 
@@ -223,7 +237,7 @@ def approximately_colinear(p1,p2,p3):
     colinear= angle < threshold
     return colinear
 
-def find_nearest_concepts(points, ref):
+def nearest_concept(points, ref):
     """
         Find nearest point from a list to a point
         Inputs:
@@ -234,7 +248,7 @@ def find_nearest_concepts(points, ref):
             dist[idx]: distance of this point to ref
     """
     dist=[np.linalg.norm(point - ref) for point in points]
-    idx = np.argsort(dist)[:1][0]
+    idx = np.argmin(dist)
     return idx, dist[idx]
 
 def load_data_json(filename):
@@ -246,8 +260,34 @@ def load_data_json(filename):
 
 
 
-#----------TEST
+
+#--------------------------------------------
+#--------DRAWING PROCEDURES------------------
+#---------------------------------------
+
+def draw(trajectory, trinity_trajectory, title):
+    """
+    Draw the pattern given the list of points.
+    #TODO: 3D rendering??
+    """
+    trajectory_vct=np.array(trajectory)
+    trinity_trajectory.append(trinity_trajectory[0])
+    trinity_trajectory_vct=np.array(trinity_trajectory)
+    plt.figure(figsize=(10,5))
+    plt.plot(trajectory_vct[:,0],trajectory_vct[:,1], color="limegreen", marker="2",markevery=1, markersize=6, markeredgecolor="limegreen")
+    plt.plot(trinity_trajectory_vct[:,0],trinity_trajectory_vct[:,1], color="deeppink", marker="1",markevery=1, markersize=10, markeredgecolor="deeppink")
+    #show
+    plt.show()
+    #or save it (have to choose)
+    #plt.savefig(title+'.png')
+    #plt.close()
+
+
+#--------------------------------
+#----------TEST------------
+#------------------------
 trajectory=[]
-for _ in range(10):
-    trajectory.append(np.random.rand((2)))
+for _ in range(20):
+    trajectory.append(2*(-0.5+np.random.rand((2))))
+
 reading(trajectory)
