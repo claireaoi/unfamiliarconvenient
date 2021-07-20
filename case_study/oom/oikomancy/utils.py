@@ -10,6 +10,10 @@ from sklearn.manifold import TSNE
 import seaborn as sns
 import pandas as pd
 
+
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
+
+
 # =============================================================================
 ########### INIT PROCEDURES
 # =============================================================================
@@ -59,7 +63,7 @@ def nearest_concept(points, ref):
 #     return data
 
 
-def initialize(filenames, graph_path, words_path):
+def initialize(filenames, graph_path, words_path, embeddings_path):
     """ """
 
     #load self self_graph
@@ -71,15 +75,19 @@ def initialize(filenames, graph_path, words_path):
     for filename in filenames:
         wordsDic[filename] = [line.rstrip('\n') for line in open(words_path+filename+'.txt')]
     
-    #load structures
+    #load templates
     with open(words_path+'haiku.txt', "r") as f:
-        structures  = f.read().split(">>>") #LIST for each Haiku
+        templates  = f.read().split(">>>") #LIST for each Haiku
 
-    return self_graph, wordsDic, structures
+    #load world embeddings
+    with open(embeddings_path) as json_file:
+        self_embeddings = json.load(json_file)
+
+    return self_graph, wordsDic, templates, self_embeddings
+
 # =============================================================================
 ########### EMBEDDINGS PROCEDURES
 # =============================================================================
-
 
 def tsne_embedding(points):
     """
@@ -89,6 +97,7 @@ def tsne_embedding(points):
     Output:
         embeddings: 2D embeddings of each of these points, after a tSNE projection (or other dimensionality reduction technique )
     """
+    #TODO: Better way bounding without this concentration?
     num_points=len(points)
     array=np.array(points)
     
@@ -96,55 +105,94 @@ def tsne_embedding(points):
     embeddings_2D=TSNE(n_components=2).fit_transform(array)
     #NOTE: may tweak param such as perplexity, early_exaggeration, learning_rate etc, https://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html
     #NOTE: This is trajectory of point between -1 and 1, else as to change normalization other points...
-    print(np.max(np.abs(embeddings_2D)))
+    #print(np.max(np.abs(embeddings_2D)))
     embeddings_2D= embeddings_2D/np.max(embeddings_2D, axis=0)#TODO this currently place them often on cirlce>>change!
-    print(embeddings_2D)
+    #print(embeddings_2D)
     return embeddings_2D
 
-def get_words_embeddings(concepts):
-    #TODO: from gpt2 vocabulary but then from own model vocabulary !
-    words_embeddings={}
+def load_gpt2(path_finetuned_ML_model=""):
+    """
+    Load gpt2 & tokenizer
+    """
+    #--load model and tokenizer
+    if path_finetuned_ML_model=="":
+        print("loading gpt2 model")
+        model=GPT2LMHeadModel.from_pretrained("gpt2")
+    else:
+        print("loading custom model")
+        model = GPT2LMHeadModel.from_pretrained(path_finetuned_ML_model)
+    # Word Token Embeddings :
+    #model_word_embeddings = model.transformer.wte.weight
+    # Word Position Embeddings :
+    #model_position_embeddings = model.transformer.wpe.weight
+    
+    #load tokenizer
+    tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+    return model, tokenizer
+
+def get_missing_words_embeddings(concepts, custom_embeddings, path_finetuned_ML_model=""):
+    """
+    Get Missing words embeddings.
+    """
+    loaded=False
+    keys=list(custom_embeddings.keys())
+    #---
+    print("Extract corresponding embeddings if not saved in file (so only for new concepts)")
     for concept in concepts:
-        words_embeddings[concept]=np.random.rand((50)) #temporary
+        if concept not in keys: #missing concept in embeddings...
+            if not loaded:
+                model, tokenizer=load_gpt2(path_finetuned_ML_model)
+                loaded=True
+            #index of the token
+            index = tokenizer.encode(concept, add_prefix_space=True)
+            #vector size [x,768], x being 1,2, 3 ...
+            custom_embeddings[concept]= model.transformer.wte.weight[index,:].tolist()#as tensor not serializable
+    
+    assert len(concepts)==len(keys)
 
-    return words_embeddings
+    return custom_embeddings
 
-def self_graph_embeddings(self_graph):
+def self_graph_embeddings(self_graph, custom_embeddings, bound, path_finetuned_ML_model=""):
     """
     Project the concepts of the self graph, once retrieved the embeddings vectors used for gpt2
     Input:
-        words_embeddings: dictionary of words & vectors in high dimension 
+        self_graph: self graph
+        custom_embeddings: dictionary of words & vectors in high dimension 
+        path_finetuned_ML_model: where is ML model, may be needed to retrieve extra embeddings
+
     Outputs:
         concepts: list of keys of the graph
-        embeddings: 2D embeddings of each of concepts in self concept
+        scaled_embeddings2D: 2D embeddings of each of concepts in self concept
+
     """
-    print("***compute self_graph_embeddings**")
     
-    # -1--get concepts in self
-    concepts=self_graph.keys()    
+    concepts=list(self_graph.keys())
     num_concepts=len(concepts)
 
-    #-2--retrieve gpt2 words embeddings attached to these concepts
-    words_embeddings=get_words_embeddings(concepts)
-    concepts_vectors=list(words_embeddings.values())
+    #-1--retrieve missing words embeddings attached to these concepts
+    print("retrieve missing embeddings")
+    custom_embeddings=get_missing_words_embeddings(concepts, custom_embeddings, path_finetuned_ML_model)
+    #concepts_vectors=list(custom_embeddings.values())
+    #TODO: For now, neglect other dimensions of the tensor which in some case is [2,768] ou [3,768]
+    concepts_vectors=[tsr[0][:] for tsr in list(custom_embeddings.values())]
 
-    #-3---turn these vectors into a 2D embedding
+    #-2---turn these vectors into a 2D embedding
+    print("tsne 2D projection")
     embeddings2D=tsne_embedding(concepts_vectors)
     
-    #-4---rescale between max and min values
-    #TODO: this depending size room or about depends scale use for other
-    MAX=20
-    scaled_embeddings2D=np.interp(embeddings2D, (embeddings2D.min(), embeddings2D.max()), (-MAX, MAX))
+    #-3---rescale between max and min values
+    print("rescale embeddings")
+    scaled_embeddings2D=np.interp(embeddings2D, (embeddings2D.min(), embeddings2D.max()), (-bound, bound))
     
-    #-5--- Visualize it
+    #-4--- Visualize it
     data = pd.DataFrame(scaled_embeddings2D, columns=["x", "y"])# columns = concepts)
     sns.set_context("notebook", font_scale=1.1)
     sns.set_style("ticks")
     #sns.color_palette("hls", 8) #TODO: color palette need column...
     #each column is a variable and each row is an observation.
-    sns.lmplot(x="x", y="y", palette=sns.color_palette("pastel", n_colors=num_concepts), data=data, truncate=False).set(xlim=(-MAX-2, MAX+2), ylim=(-MAX-2, MAX+2))
+    sns.lmplot(x="x", y="y", palette=sns.color_palette("pastel", n_colors=num_concepts), data=data, truncate=False).set(xlim=(-bound-2, bound+2), ylim=(-bound-2, bound+2))
     #x,y should be column name in data
-    plt.title('Self 2D Embeddings',weight='bold').set_fontsize('14')
+    plt.title('2D Embeddings',weight='bold').set_fontsize('14')
     plt.show()
 
     return concepts, scaled_embeddings2D
@@ -154,16 +202,16 @@ def self_graph_embeddings(self_graph):
 ########### HAIKU PROCEDURES
 # =============================================================================
 
-def pick_structure(structures):
-    structure_=random.choice(structures)
-    structure=structure_.split("\n\n")
-    final_structure=[]
-    for el in structure:
+def pick_template(templates):
+    template_=random.choice(templates)
+    template=template_.split("\n\n")
+    final_template=[]
+    for el in template:
         lines=el.split("\n")
         line=random.choice(lines)
-        final_structure.append(line)
+        final_template.append(line)
 
-    return final_structure
+    return final_template
 
 def read(line, seeds=[], dico=None):
     sentence=""
@@ -174,7 +222,10 @@ def read(line, seeds=[], dico=None):
         units=element.split("/")#/ means an AND
         for unit in units:
             bla, seeds=readUnit(unit.strip(), seeds=seeds, dico=dico)
-            sentence+=" "+ bla.strip()#Strip to remove if spaces
+            try: 
+                sentence+=" "+ bla.strip()#Strip to remove if spaces
+            except:
+                print(bla)
     return sentence, seeds
 
 def readUnit(unit, seeds=[], dico=None):
@@ -184,7 +235,7 @@ def readUnit(unit, seeds=[], dico=None):
             bla=seeds[0]
             seeds.pop(0)
         else:
-            bla, w=read(random.choice(dico[unit.replace("s","")]))
+            bla, w=read(random.choice(dico[unit.replace("s","")]), dico=dico)
     #---------composite structures
     elif unit=="N2p" or unit=="Np":#Here dont caree about plural !
         bla, seeds=read("N//Na//Pf/Na", seeds=seeds, dico=dico)
@@ -246,20 +297,23 @@ def readUnit(unit, seeds=[], dico=None):
     return bla, seeds
 
 
-def generate_haiku(words, structures, dico):
+def generate_haiku(seeds, templates, dico):
 
     """
-    Args: 3 words with which to generate an haiku
+    Args: 
+        seeds: 3 words with which to generate an haiku
+        templates: templates for Haiku
+        dico: dictionnary of words, by genre (noun, adjective etc)
 
     """
 
-    #--chose a structure for the Haiku
-    structure = pick_structure(structures)
-    print("Picked a structure", structure)
+    #--chose a template for the Haiku
+    template = pick_template(templates)
+    print("Picked a template", template)
 
     #--generate Haiku
     haiku=""
-    for line in structure:
+    for line in template:
         bla, seeds=read(line, seeds=seeds, dico=dico)#return non used seeds
         haiku+=bla + "\n"
     print("Generated Haiku", haiku)
@@ -279,18 +333,20 @@ def redefine_embeddings(embeddings, trinity):
     Redefine embeddings of the 3 concepts coming from the reading.
     The embeddings of these 3 words get pulled towards the gravity center.
     Inputs:
-        embeddings: dictionary, with the words and vectors
+        embeddings: dictionary, with the words and vectors. #NOTE: beware, here vector saved as list, may be dim [1,x], [2,x], [3,x]
+        #TODO: how treat the rows? for now ignore other rows when they appear
         trinity: 3 concepts (i.e. string)
     """
     #-0--compute center of gravity
     gravity_pull=0.2 #TBD
-    gravity_center=embeddings[trinity[0]]+embeddings[trinity[1]]+embeddings[trinity[2]]
+    gravity_center=embeddings[0, trinity[0]]+embeddings[0, trinity[1]]+embeddings[0, trinity[2]]
     gravity_center=1/3*gravity_center
     #-1---move embeddings towards gravity center
     for i in range(3):
-        embeddings[trinity[i]]=(1-gravity_pull)*embeddings[trinity[i]]+gravity_pull*gravity_center
-
+        embeddings[0, trinity[i]]=(1-gravity_pull)*embeddings[0, trinity[i]]+gravity_pull*gravity_center
     return embeddings
+
+
 
 #--------------------------------------------
 #--------DRAWING PROCEDURES------------------
@@ -328,3 +384,21 @@ def draw(trajectory, trinity_trajectory, title):
     #plt.savefig(title+'.png')
     #plt.close()
 
+
+
+######### TESTS PROCEDURES ABOVE ###########
+
+FILENAMES=["A", "Ad1", "Ad2", "Ad3", "V", "Vt", "V2", "V+", "P", "Pf", "P0", "PR0", "PR0a", "PR1a", "PR1", "N", "N2", "Nf","Nfa", "Na", "Aa", "Va", "Nfa", "ism", "Duo", "Nf", "Ma", "S", "Sc", "ESS", "ASA", "ABL", "QU",  "Tion", "Duoa"]
+GRAPH_PATH = "graph.json"# This path is temporary, it should refer to the fallbackassociative skill folder: /home/unfamiliarconvenient/.mycroft/fallback-associative/graph.json"
+WORDS_PATH="./data/" #Modify when...
+EMBEDDINGS_PATH="custom_embeddings.json" #where save words embeddings
+
+##INIT
+self_graph, wordsDic, templates, custom_embeddings=initialize(FILENAMES, GRAPH_PATH, WORDS_PATH, EMBEDDINGS_PATH)
+
+#TEST SELF GRAPH EMBEDDINGS
+# concepts, scaled_embeddings2D=self_graph_embeddings(self_graph, custom_embeddings, 10)
+# print(scaled_embeddings2D.shape)
+
+#TEST HAIKU
+#haiku=generate_haiku(["submarine", "lightbulb", "fetish"], templates, wordsDic)

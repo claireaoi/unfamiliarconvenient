@@ -18,14 +18,18 @@ Roomba Space Reading Ritual consist of
     - generate Haiku from it & say it aloud
 
 """
+#NOTE: self is world and world is self...for VA
 
 ######## NOW:
 #TODO: Use satellite data or other to trigger this ? or to trigger arduino?
+#TODO: Haiku verb conjugation library
+#TODO: Haiku Tunings
+#TODO Issue with words having 2 components or 3 even... torch.Size([2, 768])
 
 ######## SOON should do: 
-#TODO: Retrieve gpt2 embeddings and Modify gpt2 embeddings, save them for later use!
+#TODO: Modify back gpt2 model embeddings & test effect in generation
 #TODO: Visualisation
-#TODO: Haiku Gene Simplification
+#TODO: Other tunings, parameters etc.
 
 #----------------------IMPORTS------------------------------------------
 from mycroft_bus_client import MessageBusClient, Message
@@ -34,7 +38,7 @@ import random
 import json
 import re
 import numpy as np
-from .utils import pick_structure, read, update_event_data, generate_haiku, draw, nearest_concept, self_graph_embeddings, initialize, approximately_colinear,redefine_embeddings
+from .utils import pick_template, read, update_event_data, generate_haiku, draw, nearest_concept, self_graph_embeddings, initialize, approximately_colinear,redefine_embeddings
 import time
 import serial
 from time import sleep
@@ -44,21 +48,28 @@ from matplotlib.animation import FuncAnimation
 
 
 # =============================================================================
-# PARAMETERS
+# PARAMETERS to Update or tune
 # =============================================================================
-#------------------PATHS----------#NOTE: CHANGE PATH when uploading the script !
-GRAPH_PATH = "/home/unfamiliarconvenient/.mycroft/fallback-associative/graph.json"
+#------------------PATHS----------
+# #NOTE: CHANGE all these PATH when uploading the script !
+GRAPH_PATH = "./oikomancy/graph.json"# This path is temporary, it should refer to the fallbackassociative skill folder: /home/unfamiliarconvenient/.mycroft/fallback-associative/graph.json"
+WORDS_PATH="./oikomancy/data/" #Modify when...
+EMBEDDINGS_PATH="./oikomancy/custom_embeddings.json" #where save words embeddings
+##Parameters for the gpt-2 parameters
+PATH_ML_MODEL=""  #path to your fine tuned model, If empty, would use default model #NOTE: UPDATE this to actual model.
+
 #str(pathlib.Path(__file__).parent.absolute()) #may use path lib...
-WORDS_PATH=".../oikomancy/data/" #Modify when...
 
 #---------------CONSTANTS MAY TUNE------------------------------
 #to decide length trajectory roomba:
-max_frames_trajectory=80 
-min_frames_trajectory=30
+MAX_FRAMES=80 
+MIN_FRAMES=30
 #interval where listen to roomba
-interval_listener=752
+INTERVAL_LISTEN=752
 #threshold to judge if 3 points are almost aligned; sensitivity may be tuned
-threshold_colinearity=0.05 
+COLINEARITY_THRESHOLD=0.05 
+#bound for embeddings #NOTE: this depending size room or about depends scale use for other
+EMBEDDINGS_BOUND=20 
 
 
 # =============================================================================
@@ -82,12 +93,12 @@ client = MessageBusClient()
 
 #--initialize Self etc
 print("Initializing Self...")
-self_graph, wordsDic, structures=initialize(FILENAMES, GRAPH_PATH, WORDS_PATH)
+self_graph, dico, templates, custom_embeddings=initialize(FILENAMES, GRAPH_PATH, WORDS_PATH, EMBEDDINGS_PATH)
 
 #--extract embeddings of the concepts in Self and 2D embeddings of them
-#TODO: Could do it at end when add a word to self, and then save them in a file to avoid...
-print("Computing 2D Embeddings...")
-words_embeddings, embeddings2D=self_graph_embeddings(self_graph)
+#TODO: Could do it at end when add a word to self? Save it File to gain time ?
+print("Extracting Words Embeddings...and 2D Embeddings")
+custom_embeddings, embeddings2D=self_graph_embeddings(self_graph, custom_embeddings, EMBEDDINGS_BOUND, PATH_ML_MODEL)
 
 #--connect to Arduino
 print("Connecting to Arduino...")
@@ -138,8 +149,15 @@ def reinit():
 # =============================================================================
 
 def spatial_ritual(i):
+    """
+    Spatial Ritual:
+    - Listen to coordinate Sent by Arduino
+    - If new interesting point (ie turn), would look up closer Self concept and say it aloud
+    - Save the event data for future use 
 
-   
+    Input: int, step of the trajectory
+    """
+
     global sent
     global x_vals
     global y_vals
@@ -178,7 +196,7 @@ def spatial_ritual(i):
         
         #check if new point aligned with 2 previous point if nb point >=2
         if len(trajectory)>=2:
-            aligned=approximately_colinear(trajectory[-2],trajectory[-1],new_point, threshold=threshold_colinearity)
+            aligned=approximately_colinear(trajectory[-2],trajectory[-1],new_point, threshold=COLINEARITY_THRESHOLD)
             if aligned:
                 #new point aligned with last 2, so replace last point with new point:
                 trajectory[-1]=new_point
@@ -190,7 +208,7 @@ def spatial_ritual(i):
                 #get idx and distance nearest concept of this point
                 idx, dist=nearest_concept(embeddings2D, trajectory[-1])
                 #get word attached to that idx
-                new_closer_concept=list(words_embeddings.keys())[idx]
+                new_closer_concept=list(custom_embeddings.keys())[idx]
                 #TODO: Check that not the same than previously ? (may happen if embeddings not normalized)
                 print("Here is {}".format(new_closer_concept))
                 #say it aloud 
@@ -214,15 +232,15 @@ def spatial_ritual(i):
 # =============================================================================
 
 
-def reading_event(trajectory, words_embeddings, embeddings2D, event_data):
+def reading_event(trajectory, custom_embeddings, embeddings2D, event_data):
     """
-    Reading of the trajectory, given as input
+    Reading of the trajectory
     Inputs:
         trajectory: list of points in 2D space send by roomba
-        words_embeddings: embedding dictionary of self concepts
+        custom_embeddings: embedding dictionary of self concepts
     Output:
         trinity: 3 closer self concepts selected
-        words_embeddings: redefined embedding dictionary
+        custom_embeddings: redefined embedding dictionary
         
     """
     num_points=len(trajectory)
@@ -246,7 +264,7 @@ def reading_event(trajectory, words_embeddings, embeddings2D, event_data):
     #--2-- Haiku generation and Reading
     # =============================================================================
     print("-step 2---Generate Haiku")
-    haiku=generate_haiku(trinity, structures, wordsDic)
+    haiku=generate_haiku(trinity, templates, dico)
     client.emit(Message('speak', data={'utterance': haiku}))
 
     # =============================================================================
@@ -259,10 +277,9 @@ def reading_event(trajectory, words_embeddings, embeddings2D, event_data):
     #--4-- Redefine embeddings of these 3 concepts
     # =============================================================================
     print("-step 4---Redefine embeddings of these 3 concepts")
-    words_embeddings=redefine_embeddings(words_embeddings, trinity)
-    #TODO: modify the embeddings used in ML model now
+    custom_embeddings=redefine_embeddings(custom_embeddings, trinity)
 
-    return trinity, words_embeddings
+    return trinity, custom_embeddings
 
 
 # =============================================================================
@@ -281,15 +298,15 @@ while True:
     #NOTE: currently stop listening after a certain number of frames. Could also be related to an ending signal (if arduino sends it...)
     plt.figure(figsize=(10,5))
     #compute for how many frames fo the ritual
-    num_frames_trajectory=random.randint(min_frames_trajectory, max_frames_trajectory)
-    ani = FuncAnimation(plt.gcf(), spatial_ritual, frames=num_frames_trajectory, interval=interval_listener) 
+    num_frames_trajectory=random.randint(MIN_FRAMES, MAX_FRAMES)
+    ani = FuncAnimation(plt.gcf(), spatial_ritual, frames=num_frames_trajectory, interval=INTERVAL_LISTEN) 
     plt.show(block=True)
     trajectory = trajectory[:-1] #because the trajectory had one more point than when wee looked for concepts...
 
     print("=============================================================================")
     print("******+ SPIRITUAL READING ****** ")
     print("=============================================================================")
-    trinity, words_embeddings=reading_event(trajectory, words_embeddings, embeddings2D, event_data)
+    trinity, custom_embeddings=reading_event(trajectory, custom_embeddings, embeddings2D, event_data)
 
     print("=============================================================================")
     print("******+END ******+")
