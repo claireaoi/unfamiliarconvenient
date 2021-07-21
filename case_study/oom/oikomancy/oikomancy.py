@@ -38,14 +38,14 @@ import random
 import json
 import re
 import numpy as np
-from .utils import pick_template, read, update_event_data, generate_haiku, draw, nearest_concept, self_graph_embeddings, initialize, approximately_colinear,redefine_embeddings
+from .utils import pick_template, read, visualize_event_chart, update_event_data, generate_haiku, nearest_concept, self_graph_embeddings, initialize, approximately_colinear,redefine_embeddings
 import time
 import serial
 from time import sleep
 import sys
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-
+import datetime
 
 # =============================================================================
 # PARAMETERS to Update or tune
@@ -77,7 +77,7 @@ EMBEDDINGS_BOUND=20
 # =============================================================================
 
 print("=============================================================================")
-print("--step 0--  INITIALISATION")
+print("*** INITIALISATION ***")
 print("=============================================================================")
 
 #--init constants
@@ -122,8 +122,16 @@ trajectory=[]
 global event_data
 event_data=dict()
 
+#set num frames
+global num_frames
+num_frames=random.randint(MIN_FRAMES, MAX_FRAMES)
 #--time tracker 
 #start_time = time.time()
+
+#set event id
+global event_id
+#NOTE: event id for now is hours:min:seconds, but could be based on satellite data rather triggering it?
+event_id=str(datetime.timedelta(seconds=666))
 
 print("Ready to start the Ritual !")
 
@@ -163,68 +171,74 @@ def spatial_ritual(i):
     global y_vals
     global trajectory
     global event_data
+    global num_frames
+    
+    print("Frame {}".format(i))
+    
+    if i==num_frames-1: #NOTE: currently last frame save & close the plot
+        #plt.savefig('./outputs/full_trajectory_event_'+ event_id+ '.png')
+        print("Ending Spatial Dance!")#TODO: Send signal to arduino to stop, or
+        plt.close()
+    else:
+        #---listen to arduino
+        message = arduino.readline().decode("utf-8").strip()
+        print(message)
 
-    print("-step 1--Listen to Arduino...")
-    #---arduino listener
-    message = arduino.readline().decode("utf-8").strip()
-    print(message)
+        if message == 'ready' and not sent:
+            # change to 1 after debug
+            arduino.write('0'.encode())
+            arduino.flush()
+            sent = True
 
-    if message == 'ready' and not sent:
-        # change to 1 after debug
-        arduino.write('0'.encode())
-        arduino.flush()
-        sent = True
+        # case where send numerical data
+        elif message and message != 'busy' and message != 'starting roo':
 
-    # case where send numerical data
-    elif message and message != 'busy' and message != 'starting roo':
+            x, y = (message.split(';', 1))
+            x = float(x)
+            y = float(y)
+            
+            #--save data trajectory
+            x_vals.append(x)
+            y_vals.append(y)
+            
+            #--save plot frame
+            plt.cla()
+            plt.plot(x_vals, y_vals, color="mediumblue", marker="2",markevery=1, markersize=5, markeredgecolor="orangered")
 
-        x, y = (message.split(';', 1))
-        x = float(x)
-        y = float(y)
-        
-        #--save data trajectory
-        x_vals.append(x)
-        y_vals.append(y)
-        
-        #--save plot frame
-        plt.cla()
-        plt.plot(x_vals, y_vals, color="mediumblue", marker="2",markevery=1, markersize=5, markeredgecolor="orangered")
+            #----Check if new point +/- aligned with previous 2 points of trajectory (if trajectory length >2...)
+            new_point=[x,y]
+            
+            
+            #check if new point aligned with 2 previous point if nb point >=2
+            if len(trajectory)>=2:
+                aligned=approximately_colinear(trajectory[-2],trajectory[-1],new_point, threshold=COLINEARITY_THRESHOLD)
+                if aligned:
+                    #new point aligned with last 2, so replace last point with new point:
+                    trajectory[-1]=new_point
+                    #NOTE: This is a way to clean the trajectory, in the sense it removes intermediary points on the same line, 
 
-        #----Check if new point +/- aligned with previous 2 points of trajectory (if trajectory length >2...)
-        new_point=[x,y]
-        
-        
-        #check if new point aligned with 2 previous point if nb point >=2
-        if len(trajectory)>=2:
-            aligned=approximately_colinear(trajectory[-2],trajectory[-1],new_point, threshold=COLINEARITY_THRESHOLD)
-            if aligned:
-                #new point aligned with last 2, so replace last point with new point:
-                trajectory[-1]=new_point
-                #NOTE: This is a way to clean the trajectory, in the sense it removes intermediary points on the same line, 
+                else: 
+                    #means a turn happened, so will read aloud closer previous point (beware, a lil delay as look at previous point!)
+                    #get idx and distance nearest concept of this point
+                    idx, dist=nearest_concept(embeddings2D, trajectory[-1])
+                    #get word attached to that idx
+                    new_closer_concept=list(custom_embeddings.keys())[idx]
+                    #NOTE: Refer to the trajectory points values to adjust EMBEDDINGS_BOUND, else would always output same concept
+                    print("--looking at trajectory point {}. Here is {}".format(trajectory[-1], new_closer_concept))
+                    #say it aloud 
+                    client.emit(Message('speak', data={'utterance': new_closer_concept}))
+                    
+                    #--update event data
+                    # save data of close concepts and distance
+                    #NOTE: beware this concept may be already in registered concept, in which case, 
+                    # update the idx of the trajectory point only if closer than last time registered
+                    event_data=update_event_data(new_closer_concept, dist, len(trajectory)-1, event_data)
 
-            else: 
-                print("-step 2--- Dig the Closer Concept of this turn")
-                #means a turn happened, so will read aloud closer previous point (beware, a lil delay as look at previous point!)
-                #get idx and distance nearest concept of this point
-                idx, dist=nearest_concept(embeddings2D, trajectory[-1])
-                #get word attached to that idx
-                new_closer_concept=list(custom_embeddings.keys())[idx]
-                #TODO: Check that not the same than previously ? (may happen if embeddings not normalized)
-                print("Here is {}".format(new_closer_concept))
-                #say it aloud 
-                client.emit(Message('speak', data={'utterance': new_closer_concept}))
-                
-                print("-step 3---  update Event data")
-                #save data of close concepts and distance
-                #NOTE: beware this concept may be already in registered concept, in which case, 
-                # update the idx of the trajectory point only if closer than last time registered
-                event_data=update_event_data(new_closer_concept, dist, len(trajectory)-1, event_data)
+                    #add new point to trajectory (at least temporarily)
+                    trajectory.append(new_point)
 
-                #add new point to trajectory (at least temporarily)
+            else: #second point in traj
                 trajectory.append(new_point)
-
-        else: #second point in traj
-            trajectory.append(new_point)
 
 
 # =============================================================================
@@ -256,9 +270,10 @@ def reading_event(trajectory, custom_embeddings, embeddings2D, event_data):
     distances=[val[0] for val in values]
     indices=np.argsort(distances)[:3]
     trinity=[keys[i] for i in indices]
-    trinity_trajectory=[values[i][1] for i in indices]
-    print("The 3 closer self concepts for this event are {}".format(trinity))
-    print("They correspond to the 3 points in the trajectory {}".format(trinity_trajectory))
+    trinity_idx=[values[i][1] for i in indices]
+    trinity_trajectory=[trajectory[idx] for idx in trinity_idx]
+    print("Event trinity Core: {}".format(trinity))
+    print("In correspondance with the 3 domesticoCosmic points n° {}".format(trinity_idx))
 
     # =============================================================================
     #--2-- Haiku generation and Reading
@@ -266,20 +281,17 @@ def reading_event(trajectory, custom_embeddings, embeddings2D, event_data):
     print("-step 2---Generate Haiku")
     haiku=generate_haiku(trinity, templates, dico)
     client.emit(Message('speak', data={'utterance': haiku}))
+    #save it
+    with open('./outputs/haiku_event_'+ event_id+ '.txt', 'w+') as f:
+        f.writelines(haiku.split(";"))
 
     # =============================================================================
-    #--3-- Drawing Trajectory 
+    #--3-- Redefine embeddings of these 3 concepts
     # =============================================================================
-    print("-step 3---Drawing Trajectory")
-    draw(trajectory, trinity_trajectory, "Blip")
-
-    # =============================================================================
-    #--4-- Redefine embeddings of these 3 concepts
-    # =============================================================================
-    print("-step 4---Redefine embeddings of these 3 concepts")
+    print("-step 3---Redefine embeddings of these 3 concepts")
     custom_embeddings=redefine_embeddings(custom_embeddings, trinity)
 
-    return trinity, custom_embeddings
+    return trinity, trinity_trajectory, custom_embeddings, haiku
 
 
 # =============================================================================
@@ -288,65 +300,54 @@ def reading_event(trajectory, custom_embeddings, embeddings2D, event_data):
 
 while True:
     print("=============================================================================")
-    print("******+ Launching a new RITUAL ******+")
+    print("****** Launching a new RITUAL ******+")
     print("=============================================================================")
 
     print("=============================================================================")
-    print("******+ SPATIAL DANCE ******+")
+    print("****** SPATIAL DANCE ******+")
     print("=============================================================================")
     # listen to Arduino trajectory in real time, save coordinates and draw graph
     #NOTE: currently stop listening after a certain number of frames. Could also be related to an ending signal (if arduino sends it...)
     plt.figure(figsize=(10,5))
     #compute for how many frames fo the ritual
-    num_frames_trajectory=random.randint(MIN_FRAMES, MAX_FRAMES)
-    ani = FuncAnimation(plt.gcf(), spatial_ritual, frames=num_frames_trajectory, interval=INTERVAL_LISTEN) 
+    num_frames=random.randint(MIN_FRAMES, MAX_FRAMES)
+    print("Performing spatial ritual for {} frames".format(num_frames))
+    ani = FuncAnimation(plt.gcf(), spatial_ritual, frames=num_frames, interval=INTERVAL_LISTEN, repeat=False) 
     plt.show(block=True)
     trajectory = trajectory[:-1] #because the trajectory had one more point than when wee looked for concepts...
 
     print("=============================================================================")
-    print("******+ SPIRITUAL READING ****** ")
+    print("****** SPIRITUAL READING ****** ")
     print("=============================================================================")
-    trinity, custom_embeddings=reading_event(trajectory, custom_embeddings, embeddings2D, event_data)
+    trinity, trinity_trajectory, custom_embeddings, haiku=reading_event(trajectory, custom_embeddings, embeddings2D, event_data)
 
     print("=============================================================================")
-    print("******+END ******+")
+    print("****** ENDING ******+")
     print("=============================================================================")
+    print("Save new Event Chart")
+    #--visualise Event Chart
+    #TODO: visualize the concepts
+    visualize_event_chart(trajectory, trinity_trajectory, haiku, event_id=event_id)
+    print("Saved new Event Chart!")
+
     #--reinit some variables before next ritual
     reinit()
+    print("reinitialized")
 
 
 
 
 
 
+#-------------------------------------------------
+#---------OLD CODE TEMPORARY KEEP 
 
 # laod JSON structure
 # with open('sensordata.json') as jf:
 #     data_archive = json.load(jf)
 
-#---------OLD CODE TEMPORARY KEEP it but can ERASE it SOON
-
 # basically runs this script in a loop ? Need?
 #client.run_forever()
-
-
-    # #-1--- simplify pattern: if 3 consecutive points +/- aligned, remove the one in the middle
-    # print("***Simplifying trajectory***")
-    # i=0
-    # cleaned_trajectory=[trajectory[0]]
-    # while i<num_points_init-3:
-    #     aligned=True
-    #     count=i+1
-    #     while aligned and count<num_points_init-1:
-    #         p1, p2, p3=trajectory[i],trajectory[count], trajectory[count+1]
-    #         ##check if p1,p2,p3 are colinear
-    #         aligned=approximately_colinear(p1,p2,p3)
-    #         count+=1
-    #     cleaned_trajectory.append(trajectory[count]) 
-    #     i=count
-    # num_points=len(cleaned_trajectory)
-    # print("Original trajectory length {} cleaned trajectory length {}".format( num_points_init,  num_points))
-
 
     # #-3---find closer words to each of these points
     # print("***Interpreting Trajectory; extracting closer concepts***")
@@ -360,7 +361,7 @@ while True:
     #             close_concepts.append(key)
     #             distances.append(dist)
     #             trajectory_points.append(point)#point from traj is closer to
-    #         else:#TODO: currently too often same concept closer to all>>> change this! Rather ok if same?
+    #         else:#NOTE: Currently too often same concept closer to all>>> change this! Rather ok if same?
     #             j=close_concepts.index(key)
     #             if dist<distances[j]:#update distance #although risk one closer to several
     #                 distances[j]=dist
@@ -372,8 +373,7 @@ while True:
     # #--step 1-- Extract Sub Trajectory ()
     # # =============================================================================
     # max_num_points=7 #TBD
-    # extract_sub_trajectory =False #TBD NOTE: May choose if trajectory too long to extrac sub trajectory
-
+    # extract_sub_trajectory =False 
     # if extract_sub_trajectory and len(trajectory)>max_num_points:
     #     extracted_trajectory=trajectory
     #     num_points=max_num_points

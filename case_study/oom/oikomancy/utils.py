@@ -133,11 +133,16 @@ def load_gpt2(path_finetuned_ML_model=""):
 def get_missing_words_embeddings(concepts, custom_embeddings, path_finetuned_ML_model=""):
     """
     Get Missing words embeddings.
+    Inputs:
+        concepts: list of string
+        custom_embeddings: dictionnary whose keys are strings, values are the embeddings (encoded here as list size [m,N])
+        path_finetuned_ML_model: path to the ML model. If empty, take base gpt2 from transformers lib
+    Input
+
     """
     loaded=False
     keys=list(custom_embeddings.keys())
     #---
-    print("Extract corresponding embeddings if not saved in file (so only for new concepts)")
     for concept in concepts:
         if concept not in keys: #missing concept in embeddings...
             if not loaded:
@@ -147,7 +152,8 @@ def get_missing_words_embeddings(concepts, custom_embeddings, path_finetuned_ML_
             index = tokenizer.encode(concept, add_prefix_space=True)
             #vector size [x,768], x being 1,2, 3 ...
             custom_embeddings[concept]= model.transformer.wte.weight[index,:].tolist()#as tensor not serializable
-    
+    if not loaded:
+        print("No missing embeddings.")
     assert len(concepts)==len(keys)
 
     return custom_embeddings
@@ -195,7 +201,7 @@ def self_graph_embeddings(self_graph, custom_embeddings, bound, path_finetuned_M
     plt.title('2D Embeddings',weight='bold').set_fontsize('14')
     plt.show()
 
-    return concepts, scaled_embeddings2D
+    return custom_embeddings, scaled_embeddings2D
 
 
 # =============================================================================
@@ -316,11 +322,12 @@ def generate_haiku(seeds, templates, dico):
     for line in template:
         bla, seeds=read(line, seeds=seeds, dico=dico)#return non used seeds
         haiku+=bla + "\n"
-    print("Generated Haiku", haiku)
+    print("Generated Haiku \n", haiku)
 
     #--clean&-speak it loud
-    haiku= re.sub("\s\s+" , " ", haiku) #remove multiple blanks
-    print("Formatted Haiku", haiku)
+    haiku=haiku.replace("\n", ";")
+    haiku= re.sub("\s\s+"," ", haiku) #remove multiple blanks
+    #print("Formatted Haiku", haiku)
 
     return haiku
 
@@ -337,13 +344,14 @@ def redefine_embeddings(embeddings, trinity):
         #TODO: how treat the rows? for now ignore other rows when they appear
         trinity: 3 concepts (i.e. string)
     """
-    #-0--compute center of gravity
+    #-1--compute center of gravity
     gravity_pull=0.2 #TBD
-    gravity_center=embeddings[0, trinity[0]]+embeddings[0, trinity[1]]+embeddings[0, trinity[2]]
-    gravity_center=1/3*gravity_center
-    #-1---move embeddings towards gravity center
+    gravity_center=np.array(embeddings[trinity[0]][0])+np.array(embeddings[trinity[1]][0])+np.array(embeddings[trinity[2]][0])
+    gravity_center=gravity_center / 3
+    #-2---move embeddings towards gravity center
     for i in range(3):
-        embeddings[0, trinity[i]]=(1-gravity_pull)*embeddings[0, trinity[i]]+gravity_pull*gravity_center
+        shifted_embedding=(1-gravity_pull)*np.array(embeddings[trinity[i]][0])+gravity_pull*gravity_center
+        embeddings[trinity[i]][0]=shifted_embedding.tolist()
     return embeddings
 
 
@@ -353,6 +361,16 @@ def redefine_embeddings(embeddings, trinity):
 #---------------------------------------
 
 def update_event_data(new_closer_concept, dist, point_idx, event_data):
+    """
+    Update event data.
+    Inputs:
+        new_closer_concept: string
+        dist: float, distance between concept & domesticoCosmic point (of the trajectory)
+        point_idx: int, index of the domesticoCosmic point
+        event_data: dictionnary whose keys are string (concepts) and values are list [float, int] (which are distances, reps. idx of corresponding trajectory point in our case)
+    Output:
+        event_data: dictionnary whose keys are string (concepts) and values are list [float, int] (which are distances, reps. idx of corresponding trajectory point in our case)
+    """
 
     if new_closer_concept not in list(event_data.keys()):
         #new concept, then add it with as values idx point trajectory and word
@@ -366,39 +384,103 @@ def update_event_data(new_closer_concept, dist, point_idx, event_data):
 #--------------------------------------------
 #--------DRAWING PROCEDURES------------------
 #---------------------------------------
-
-def draw(trajectory, trinity_trajectory, title):
+def draw_event_chart(trajectory, trinity_trajectory, haiku, event_id="000"):
     """
-    Draw the pattern given the list of points.
-    #TODO: 3D rendering??
+    Final drawing
+    #TODO: Better rendering: only figure here save separately haiku w/ same id.
     """
     trajectory_vct=np.array(trajectory)
     trinity_trajectory.append(trinity_trajectory[0])
     trinity_trajectory_vct=np.array(trinity_trajectory)
-    plt.figure(figsize=(10,5))
-    plt.plot(trajectory_vct[:,0],trajectory_vct[:,1], color="limegreen", marker="2",markevery=1, markersize=6, markeredgecolor="limegreen")
-    plt.plot(trinity_trajectory_vct[:,0],trinity_trajectory_vct[:,1], color="deeppink", marker="1",markevery=1, markersize=10, markeredgecolor="deeppink")
+    fig=plt.figure(figsize=(5,10))
+    plt.axis('off')
+
+    #NOTE: here inverse coordinates compared to before to have vetical plot
+    plt.plot(trajectory_vct[:,1],trajectory_vct[:,0], color="limegreen", marker="2",markevery=1, markersize=6, markeredgecolor="limegreen")
+    plt.plot(trinity_trajectory_vct[:,1],trinity_trajectory_vct[:,0], color="deeppink", marker="1",markevery=1, markersize=12, markeredgecolor="deeppink")
+    
+    bottom0, left = .05, 0.01 #to be adjusted
+    bottom1, left = .03, 0.01 #to be adjusted
+    bottom2, left = .01, 0.01 #to be adjusted
+
+    haikuList=haiku.split(";")#split along verse
+
+    #add Haiku to the plo
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.text(left, bottom0, haikuList[0],
+    horizontalalignment='left',
+    verticalalignment='bottom',
+    transform=ax.transAxes,
+    color="deeppink")
+    
+    ax.text(left, bottom1, haikuList[1],
+    horizontalalignment='left',
+    verticalalignment='bottom',
+    transform=ax.transAxes,
+    color="deeppink")
+
+    ax.text(left, bottom2, haikuList[2],
+    horizontalalignment='left',
+    verticalalignment='bottom',
+    transform=ax.transAxes,
+    color="deeppink")
+
+    ax.set_axis_off()
+
+
     #show
-    plt.show()
-    #or save it (have to choose)
-    #plt.savefig(title+'.png')
+    plt.savefig('./outputs/event_chart_'+ event_id+ '.png')
     #plt.close()
 
 
 
-######### TESTS PROCEDURES ABOVE ###########
 
-FILENAMES=["A", "Ad1", "Ad2", "Ad3", "V", "Vt", "V2", "V+", "P", "Pf", "P0", "PR0", "PR0a", "PR1a", "PR1", "N", "N2", "Nf","Nfa", "Na", "Aa", "Va", "Nfa", "ism", "Duo", "Nf", "Ma", "S", "Sc", "ESS", "ASA", "ABL", "QU",  "Tion", "Duoa"]
-GRAPH_PATH = "graph.json"# This path is temporary, it should refer to the fallbackassociative skill folder: /home/unfamiliarconvenient/.mycroft/fallback-associative/graph.json"
-WORDS_PATH="./data/" #Modify when...
-EMBEDDINGS_PATH="custom_embeddings.json" #where save words embeddings
+def visualize_event_chart(trajectory, trinity_trajectory, haiku, event_id="000"):
+    """
+    Final visualisation...
+    #for now same than drawing procedure above...
+    """
+    #draw & save the trajectory 
+    draw_event_chart(trajectory, trinity_trajectory, haiku, event_id=event_id)
 
-##INIT
-self_graph, wordsDic, templates, custom_embeddings=initialize(FILENAMES, GRAPH_PATH, WORDS_PATH, EMBEDDINGS_PATH)
 
-#TEST SELF GRAPH EMBEDDINGS
-# concepts, scaled_embeddings2D=self_graph_embeddings(self_graph, custom_embeddings, 10)
-# print(scaled_embeddings2D.shape)
 
-#TEST HAIKU
-#haiku=generate_haiku(["submarine", "lightbulb", "fetish"], templates, wordsDic)
+
+
+
+
+# ######### TESTS PROCEDURES ABOVE ###########
+
+
+
+# FILENAMES=["A", "Ad1", "Ad2", "Ad3", "V", "Vt", "V2", "V+", "P", "Pf", "P0", "PR0", "PR0a", "PR1a", "PR1", "N", "N2", "Nf","Nfa", "Na", "Aa", "Va", "Nfa", "ism", "Duo", "Nf", "Ma", "S", "Sc", "ESS", "ASA", "ABL", "QU",  "Tion", "Duoa"]
+# GRAPH_PATH = "graph.json"# This path is temporary, it should refer to the fallbackassociative skill folder: /home/unfamiliarconvenient/.mycroft/fallback-associative/graph.json"
+# WORDS_PATH="./data/" #Modify when...
+# EMBEDDINGS_PATH="custom_embeddings.json" #where save words embeddings
+
+# ##INIT
+# self_graph, wordsDic, templates, custom_embeddings=initialize(FILENAMES, GRAPH_PATH, WORDS_PATH, EMBEDDINGS_PATH)
+
+# #TEST SELF GRAPH EMBEDDINGS
+# # concepts, scaled_embeddings2D=self_graph_embeddings(self_graph, custom_embeddings, 10)
+# # print(scaled_embeddings2D.shape)
+
+# #TEST HAIKU
+# #haiku=generate_haiku(["submarine", "lightbulb", "fetish"], templates, wordsDic)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
