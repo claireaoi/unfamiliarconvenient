@@ -271,8 +271,8 @@ def draw_event_chart(trajectory, trinity_trajectory, haiku, event_id="000", outp
     plt.axis('off')
 
     #NOTE: here inverse coordinates compared to before to have vetical plot
-    plt.plot(trajectory_vct[:,1],trajectory_vct[:,0], color="limegreen", marker="2",markevery=1, markersize=6, markeredgecolor="limegreen")
-    plt.plot(trinity_trajectory_vct[:,1],trinity_trajectory_vct[:,0], color="deeppink", marker="1",markevery=1, markersize=12, markeredgecolor="deeppink")
+    plt.plot(trajectory_vct[:,1],trajectory_vct[:,0], color="limegreen", linewidth=2, marker="2",markevery=1, markersize=12, markeredgecolor="limegreen")
+    plt.plot(trinity_trajectory_vct[:,1],trinity_trajectory_vct[:,0], color="deeppink",linewidth=6, marker="1",markevery=1, markersize=24, markeredgecolor="deeppink")
     
     bottom0, left = .05, 0.01 #to be adjusted
     bottom1, left = .03, 0.01 #to be adjusted
