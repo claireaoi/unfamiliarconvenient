@@ -8,24 +8,27 @@ import random
 import json
 import re
 import numpy as np
-from utils import pick_template, read, visualize_event_chart, update_event_data, generate_haiku, nearest_concept, self_graph_embeddings, initialize, approximately_colinear,redefine_embeddings
+from utils import pick_template, read, visualize_event_chart, update_event_data, generate_haiku, nearest_concept, initialize, approximately_colinear,redefine_embeddings
 import time
 from time import sleep
 import sys
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-import datetime
+from datetime import datetime
+
 
 # =============================================================================
 # PARAMETERS to Update or tune
 # =============================================================================
 #------------------PATHS----------
 # #NOTE: CHANGE all these PATH when uploading the script !
-GRAPH_PATH = "graph.json"# This path is temporary, it should refer to the fallbackassociative skill folder: /home/unfamiliarconvenient/.mycroft/fallback-associative/graph.json"
-WORDS_PATH="./data/" #Modify when...
-EMBEDDINGS_PATH="custom_embeddings.json" #where save words embeddings
+GRAPH_PATH = "./oikomancy/graph.json"# This path is temporary, it should refer to the fallbackassociative skill folder: /home/unfamiliarconvenient/.mycroft/fallback-associative/graph.json"
+WORDS_PATH="./oikomancy/data/" #Modify when...
+EMBEDDINGS_PATH="./oikomancy/custom_embeddings.json" #where save words embeddings
 ##Parameters for the gpt-2 parameters
 PATH_ML_MODEL=""  #path to your fine tuned model, If empty, would use default model #NOTE: UPDATE this to actual model.
+EMBEDDINGS2D_PATH="./oikomancy/custom_embeddings2D.npy" #where save words embeddings
+READING_EVENT_FOLDER="./oikomancy/outputs/"
 
 #str(pathlib.Path(__file__).parent.absolute()) #may use path lib...
 
@@ -38,7 +41,7 @@ INTERVAL_LISTEN=752
 #threshold to judge if 3 points are almost aligned; sensitivity may be tuned
 COLINEARITY_THRESHOLD=0.05 
 #bound for embeddings
-EMBEDDINGS_BOUND=1
+EMBEDDINGS_SCALE=1 #
 
 
 # =============================================================================
@@ -69,12 +72,11 @@ event_data=dict()
 
 #--initialize Self etc
 print("Initializing Self...")
-self_graph, dico, templates, custom_embeddings=initialize(FILENAMES, GRAPH_PATH, WORDS_PATH, EMBEDDINGS_PATH)
+self_graph, dico, templates, custom_embeddings, embeddings2D=initialize(FILENAMES, GRAPH_PATH, WORDS_PATH, EMBEDDINGS_PATH, EMBEDDINGS2D_PATH)
 
-#--extract embeddings of the concepts in Self and 2D embeddings of them
-#TODO: Could do it at end when add a word to self? Save it File to gain time ?
-print("Extracting Words Embeddings...and 2D Embeddings")
-custom_embeddings, embeddings2D=self_graph_embeddings(self_graph, custom_embeddings, EMBEDDINGS_BOUND, PATH_ML_MODEL)
+#---rescale 2D embeddings if needed, depending space
+embeddings2D=EMBEDDINGS_SCALE*embeddings2D
+
 
 #set num frames
 global num_frames
@@ -83,7 +85,8 @@ num_frames=random.randint(MIN_FRAMES, MAX_FRAMES)
 #set event id
 global event_id
 #NOTE: event id for now is hours:min:seconds, but could be based on satellite data rather triggering it?
-event_id=str(datetime.timedelta(seconds=666))
+now = datetime.now()
+event_id=now.strftime("%H:%M:%S")
 
 #--time tracker 
 #start_time = time.time()
@@ -136,8 +139,9 @@ def spatial_ritual(i):
     
     else:
         # case where send numerical data
-        x = random.uniform(-1,1)
-        y = random.uniform(-1,1)
+        
+        x = random.uniform(0.5,1)#TODO: TEMP between 0 and 1 as noticed embeddings concentrated mostly positive
+        y = random.uniform(0.5,1)
         
         #--save data trajectory
         x_vals.append(x)
@@ -226,7 +230,7 @@ def reading_event(trajectory, custom_embeddings, embeddings2D, event_data):
     haiku=generate_haiku(trinity, templates, dico)
     trinity=[keys[i] for i in indices] #seems needed to redefine it as original else trinity got "consumed" by Haiku generation
     #save it
-    with open('./outputs/haiku_event_'+ event_id+ '.txt', 'w+') as f:
+    with open(READING_EVENT_FOLDER+"haiku_event_"+ event_id+ '.txt', 'w+') as f:
         f.writelines(haiku.split(";"))
 
     #client.emit(Message('speak', data={'utterance': haiku}))
@@ -236,6 +240,9 @@ def reading_event(trajectory, custom_embeddings, embeddings2D, event_data):
     # =============================================================================
     print("-step 4---Redefine embeddings of these 3 concepts")
     custom_embeddings=redefine_embeddings(custom_embeddings, trinity)
+    #save it:
+    with open(EMBEDDINGS_PATH, 'w') as fp:
+        json.dump(custom_embeddings, fp)
 
     return trinity, trinity_trajectory, custom_embeddings, haiku
 
@@ -259,18 +266,20 @@ print("Performing spatial ritual for {} frames".format(num_frames_trajectory))
 ani = FuncAnimation(plt.gcf(), spatial_ritual, frames=num_frames_trajectory, interval=INTERVAL_LISTEN, repeat=False) 
 plt.show(block=True)
 trajectory = trajectory[:-1] #because the trajectory had one more point than when wee looked for concepts...
+print("Trajectory of length {}".format(len(trajectory)))
 
 print("=============================================================================")
 print("******  SPIRITUAL READING ****** ")
 print("=============================================================================")
 trinity, trinity_trajectory, custom_embeddings, haiku=reading_event(trajectory, custom_embeddings, embeddings2D, event_data)
 
+
 print("=============================================================================")
 print("****** END ******")
 print("=============================================================================")
 
 #--visualise Event Chart
-visualize_event_chart(trajectory, trinity_trajectory, haiku, event_id=event_id)
+visualize_event_chart(trajectory, trinity_trajectory, haiku, event_id=event_id, output_folder=READING_EVENT_FOLDER)
 print("Saved new Event Chart!")
 
 #--reinit some variables before next ritual

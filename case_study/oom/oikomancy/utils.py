@@ -6,12 +6,7 @@ import random
 import matplotlib.pyplot as plt
 from string import punctuation
 import re
-from sklearn.manifold import TSNE
 import seaborn as sns
-import pandas as pd
-
-
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
 
 # =============================================================================
@@ -53,18 +48,11 @@ def nearest_concept(points, ref):
     idx = np.argmin(dist)
     return idx, dist[idx]
 
-# def load_data_json(filename, folderpath):
-#     """
-#     Load json data
-#     """
-#     folderpath="/home/unfamiliarconvenient/.mycroft/fallback-associative/"
-#     with open(filepath+filename) as json_file:
-#         data = json.load(json_file)
-#     return data
 
+def initialize(filenames, graph_path, words_path, embeddings_path, embeddings2D_path):
+    """ 
+    """
 
-def initialize(filenames, graph_path, words_path, embeddings_path):
-    """ """
 
     #load self self_graph
     with open(graph_path) as json_file:
@@ -83,125 +71,12 @@ def initialize(filenames, graph_path, words_path, embeddings_path):
     with open(embeddings_path) as json_file:
         self_embeddings = json.load(json_file)
 
-    return self_graph, wordsDic, templates, self_embeddings
-
-# =============================================================================
-########### EMBEDDINGS PROCEDURES
-# =============================================================================
-
-def tsne_embedding(points):
-    """
-    Projection of a list of points in high dimensional space into 2D
-    Inputs:
-        points: list of points in High Dimensional space (as numpy array or tensors?)
-    Output:
-        embeddings: 2D embeddings of each of these points, after a tSNE projection (or other dimensionality reduction technique )
-    """
-    #TODO: Better way bounding without this concentration?
-    num_points=len(points)
-    array=np.array(points)
-    
-    #---1 compute 2D embeddings with TSNE
-    embeddings_2D=TSNE(n_components=2).fit_transform(array)
-    #NOTE: may tweak param such as perplexity, early_exaggeration, learning_rate etc, https://scikit-learn.org/stable/modules/generated/sklearn.manifold.TSNE.html
-    #NOTE: This is trajectory of point between -1 and 1, else as to change normalization other points...
-    #print(np.max(np.abs(embeddings_2D)))
-    embeddings_2D= embeddings_2D/np.max(embeddings_2D, axis=0)#TODO this currently place them often on cirlce>>change!
-    #print(embeddings_2D)
-    return embeddings_2D
-
-def load_gpt2(path_finetuned_ML_model=""):
-    """
-    Load gpt2 & tokenizer
-    """
-    #--load model and tokenizer
-    if path_finetuned_ML_model=="":
-        print("loading gpt2 model")
-        model=GPT2LMHeadModel.from_pretrained("gpt2")
-    else:
-        print("loading custom model")
-        model = GPT2LMHeadModel.from_pretrained(path_finetuned_ML_model)
-    # Word Token Embeddings :
-    #model_word_embeddings = model.transformer.wte.weight
-    # Word Position Embeddings :
-    #model_position_embeddings = model.transformer.wpe.weight
-    
-    #load tokenizer
-    tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
-    return model, tokenizer
-
-def get_missing_words_embeddings(concepts, custom_embeddings, path_finetuned_ML_model=""):
-    """
-    Get Missing words embeddings.
-    Inputs:
-        concepts: list of string
-        custom_embeddings: dictionnary whose keys are strings, values are the embeddings (encoded here as list size [m,N])
-        path_finetuned_ML_model: path to the ML model. If empty, take base gpt2 from transformers lib
-    Input
-
-    """
-    loaded=False
-    keys=list(custom_embeddings.keys())
-    #---
-    for concept in concepts:
-        if concept not in keys: #missing concept in embeddings...
-            if not loaded:
-                model, tokenizer=load_gpt2(path_finetuned_ML_model)
-                loaded=True
-            #index of the token
-            index = tokenizer.encode(concept, add_prefix_space=True)
-            #vector size [x,768], x being 1,2, 3 ...
-            custom_embeddings[concept]= model.transformer.wte.weight[index,:].tolist()#as tensor not serializable
-    if not loaded:
-        print("No missing embeddings.")
-    assert len(concepts)==len(keys)
-
-    return custom_embeddings
-
-def self_graph_embeddings(self_graph, custom_embeddings, bound, path_finetuned_ML_model=""):
-    """
-    Project the concepts of the self graph, once retrieved the embeddings vectors used for gpt2
-    Input:
-        self_graph: self graph
-        custom_embeddings: dictionary of words & vectors in high dimension 
-        path_finetuned_ML_model: where is ML model, may be needed to retrieve extra embeddings
-
-    Outputs:
-        concepts: list of keys of the graph
-        scaled_embeddings2D: 2D embeddings of each of concepts in self concept
-
-    """
-    
-    concepts=list(self_graph.keys())
-    num_concepts=len(concepts)
-
-    #-1--retrieve missing words embeddings attached to these concepts
-    print("retrieve missing embeddings")
-    custom_embeddings=get_missing_words_embeddings(concepts, custom_embeddings, path_finetuned_ML_model)
-    #concepts_vectors=list(custom_embeddings.values())
-    #TODO: For now, neglect other dimensions of the tensor which in some case is [2,768] ou [3,768]
-    concepts_vectors=[tsr[0][:] for tsr in list(custom_embeddings.values())]
-
-    #-2---turn these vectors into a 2D embedding
-    print("tsne 2D projection")
-    embeddings2D=tsne_embedding(concepts_vectors)
-    
-    #-3---rescale between max and min values
-    print("rescale embeddings")
-    scaled_embeddings2D=np.interp(embeddings2D, (embeddings2D.min(), embeddings2D.max()), (-bound, bound))
-    
-    #-4--- Visualize it
-    data = pd.DataFrame(scaled_embeddings2D, columns=["x", "y"])# columns = concepts)
-    sns.set_context("notebook", font_scale=1.1)
-    sns.set_style("ticks")
-    #sns.color_palette("hls", 8) #TODO: color palette need column...
-    #each column is a variable and each row is an observation.
-    sns.lmplot(x="x", y="y", palette=sns.color_palette("pastel", n_colors=num_concepts), data=data, truncate=False).set(xlim=(-bound-2, bound+2), ylim=(-bound-2, bound+2))
-    #x,y should be column name in data
-    plt.title('2D Embeddings',weight='bold').set_fontsize('14')
-    plt.show()
-
-    return custom_embeddings, scaled_embeddings2D
+    ne=len(list(self_embeddings.keys()))
+    embeddings2D= np.load(embeddings2D_path)
+    assert list(embeddings2D.shape)==[ne,2]
+    print("Retrieved {} embeddings ".format(ne))
+    idx=list(self_embeddings.keys()).index("acid")
+    return self_graph, wordsDic, templates, self_embeddings, embeddings2D
 
 
 # =============================================================================
@@ -384,7 +259,7 @@ def update_event_data(new_closer_concept, dist, point_idx, event_data):
 #--------------------------------------------
 #--------DRAWING PROCEDURES------------------
 #---------------------------------------
-def draw_event_chart(trajectory, trinity_trajectory, haiku, event_id="000"):
+def draw_event_chart(trajectory, trinity_trajectory, haiku, event_id="000", output_folder=""):
     """
     Final drawing
     #TODO: Better rendering: only figure here save separately haiku w/ same id.
@@ -429,19 +304,20 @@ def draw_event_chart(trajectory, trinity_trajectory, haiku, event_id="000"):
 
 
     #show
-    plt.savefig('./outputs/event_chart_'+ event_id+ '.png')
+    plt.savefig(output_folder+"event_chart_"+ event_id+ '.png')
     #plt.close()
 
 
 
 
-def visualize_event_chart(trajectory, trinity_trajectory, haiku, event_id="000"):
+def visualize_event_chart(trajectory, trinity_trajectory, haiku, event_id="000", output_folder=""):
     """
     Final visualisation...
     #for now same than drawing procedure above...
     """
     #draw & save the trajectory 
-    draw_event_chart(trajectory, trinity_trajectory, haiku, event_id=event_id)
+    draw_event_chart(trajectory, trinity_trajectory, haiku, event_id=event_id, output_folder=output_folder)
+
 
 
 
@@ -472,15 +348,22 @@ def visualize_event_chart(trajectory, trinity_trajectory, haiku, event_id="000")
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+# def load_gpt2(path_finetuned_ML_model=""):
+#     """
+#     Load gpt2 & tokenizer
+#     """
+#     #--load model and tokenizer
+#     if path_finetuned_ML_model=="":
+#         print("loading gpt2 model")
+#         model=GPT2LMHeadModel.from_pretrained("gpt2")
+#     else:
+#         print("loading custom model")
+#         model = GPT2LMHeadModel.from_pretrained(path_finetuned_ML_model)
+#     # Word Token Embeddings :
+#     #model_word_embeddings = model.transformer.wte.weight
+#     # Word Position Embeddings :
+#     #model_position_embeddings = model.transformer.wpe.weight
+    
+#     #load tokenizer
+#     tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+#     return model, tokenizer

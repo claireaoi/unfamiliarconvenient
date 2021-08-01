@@ -24,11 +24,13 @@ Roomba Space Reading Ritual consist of
 #TODO: Use satellite data or other to trigger this ? or to trigger arduino?
 #TODO: Haiku verb conjugation library
 #TODO: Haiku Tunings
-#TODO Issue with words having 2 components or 3 even... torch.Size([2, 768])
+#TODO: Issue with words having 2 components or 3 even... torch.Size([2, 768])
+#TODO: CLEAN self graph.. there are letters like c
+#TODO: Test embeddings 
 
 ######## SOON should do: 
 #TODO: Modify back gpt2 model embeddings & test effect in generation
-#TODO: Visualisation
+#TODO: Visualisation better
 #TODO: Other tunings, parameters etc.
 
 #----------------------IMPORTS------------------------------------------
@@ -38,14 +40,15 @@ import random
 import json
 import re
 import numpy as np
-from .utils import pick_template, read, visualize_event_chart, update_event_data, generate_haiku, nearest_concept, self_graph_embeddings, initialize, approximately_colinear,redefine_embeddings
+from .utils import pick_template, read, visualize_event_chart, update_event_data, generate_haiku, nearest_concept, initialize, approximately_colinear,redefine_embeddings
 import time
 import serial
 from time import sleep
 import sys
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-import datetime
+from datetime import datetime
+
 
 # =============================================================================
 # PARAMETERS to Update or tune
@@ -55,8 +58,8 @@ import datetime
 GRAPH_PATH = "./oikomancy/graph.json"# This path is temporary, it should refer to the fallbackassociative skill folder: /home/unfamiliarconvenient/.mycroft/fallback-associative/graph.json"
 WORDS_PATH="./oikomancy/data/" #Modify when...
 EMBEDDINGS_PATH="./oikomancy/custom_embeddings.json" #where save words embeddings
-##Parameters for the gpt-2 parameters
-PATH_ML_MODEL=""  #path to your fine tuned model, If empty, would use default model #NOTE: UPDATE this to actual model.
+EMBEDDINGS2D_PATH="./oikomancy/custom_embeddings2D.npy" #where save words embeddings
+READING_EVENT_FOLDER="./oikomancy/outputs/"
 
 #str(pathlib.Path(__file__).parent.absolute()) #may use path lib...
 
@@ -68,8 +71,8 @@ MIN_FRAMES=30
 INTERVAL_LISTEN=752
 #threshold to judge if 3 points are almost aligned; sensitivity may be tuned
 COLINEARITY_THRESHOLD=0.05 
-#bound for embeddings #NOTE: this depending size room or about depends scale use for other
-EMBEDDINGS_BOUND=20 
+#NOTE: change the scale embeddings depending size room!
+EMBEDDINGS_SCALE=1
 
 
 # =============================================================================
@@ -93,12 +96,11 @@ client = MessageBusClient()
 
 #--initialize Self etc
 print("Initializing Self...")
-self_graph, dico, templates, custom_embeddings=initialize(FILENAMES, GRAPH_PATH, WORDS_PATH, EMBEDDINGS_PATH)
+self_graph, dico, templates, custom_embeddings, embeddings2D=initialize(FILENAMES, GRAPH_PATH, WORDS_PATH, EMBEDDINGS_PATH, EMBEDDINGS2D_PATH)
 
-#--extract embeddings of the concepts in Self and 2D embeddings of them
-#TODO: Could do it at end when add a word to self? Save it File to gain time ?
-print("Extracting Words Embeddings...and 2D Embeddings")
-custom_embeddings, embeddings2D=self_graph_embeddings(self_graph, custom_embeddings, EMBEDDINGS_BOUND, PATH_ML_MODEL)
+#---rescale 2D embeddings if needed, depending space
+embeddings2D=EMBEDDINGS_SCALE*embeddings2D
+
 
 #--connect to Arduino
 print("Connecting to Arduino...")
@@ -131,7 +133,8 @@ num_frames=random.randint(MIN_FRAMES, MAX_FRAMES)
 #set event id
 global event_id
 #NOTE: event id for now is hours:min:seconds, but could be based on satellite data rather triggering it?
-event_id=str(datetime.timedelta(seconds=666))
+now = datetime.now()
+event_id=now.strftime("%H:%M:%S")
 
 print("Ready to start the Ritual !")
 
@@ -177,7 +180,7 @@ def spatial_ritual(i):
     
     if i==num_frames-1: #NOTE: currently last frame save & close the plot
         #plt.savefig('./outputs/full_trajectory_event_'+ event_id+ '.png')
-        print("Ending Spatial Dance!")#TODO: Send signal to arduino to stop, or
+        print("Ending Spatial Dance!") #TODO: Send signal to arduino to stop roomba trajectory ?
         plt.close()
     else:
         #---listen to arduino
@@ -259,7 +262,7 @@ def reading_event(trajectory, custom_embeddings, embeddings2D, event_data):
     """
     num_points=len(trajectory)
     print("Reading Event of a trajectory of length {}".format(num_points))
-    #TODO: work with sub trajectory if too big?
+    #NOTE: may have to work with sub trajectory if too big?
 
     # =============================================================================
     #--1--  Extract 3 Closer concepts
@@ -282,7 +285,7 @@ def reading_event(trajectory, custom_embeddings, embeddings2D, event_data):
     haiku=generate_haiku(trinity, templates, dico)
     client.emit(Message('speak', data={'utterance': haiku}))
     #save it
-    with open('./outputs/haiku_event_'+ event_id+ '.txt', 'w+') as f:
+    with open(READING_EVENT_FOLDER+ "haiku_event_"+ event_id+ '.txt', 'w+') as f:
         f.writelines(haiku.split(";"))
 
     # =============================================================================
@@ -290,6 +293,9 @@ def reading_event(trajectory, custom_embeddings, embeddings2D, event_data):
     # =============================================================================
     print("-step 3---Redefine embeddings of these 3 concepts")
     custom_embeddings=redefine_embeddings(custom_embeddings, trinity)
+    #save it:
+    with open(EMBEDDINGS_PATH, 'w') as fp:
+        json.dump(custom_embeddings, fp)
 
     return trinity, trinity_trajectory, custom_embeddings, haiku
 
@@ -315,6 +321,7 @@ while True:
     ani = FuncAnimation(plt.gcf(), spatial_ritual, frames=num_frames, interval=INTERVAL_LISTEN, repeat=False) 
     plt.show(block=True)
     trajectory = trajectory[:-1] #because the trajectory had one more point than when wee looked for concepts...
+    print("Trajectory of length {}".format(len(trajectory)))
 
     print("=============================================================================")
     print("****** SPIRITUAL READING ****** ")
@@ -326,8 +333,7 @@ while True:
     print("=============================================================================")
     print("Save new Event Chart")
     #--visualise Event Chart
-    #TODO: visualize the concepts
-    visualize_event_chart(trajectory, trinity_trajectory, haiku, event_id=event_id)
+    visualize_event_chart(trajectory, trinity_trajectory, haiku, event_id=event_id, output_folder=READING_EVENT_FOLDER)
     print("Saved new Event Chart!")
 
     #--reinit some variables before next ritual
