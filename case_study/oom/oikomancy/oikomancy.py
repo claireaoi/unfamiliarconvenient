@@ -49,6 +49,8 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from datetime import datetime
 
+from gingerit.gingerit import GingerIt
+gingerParser= GingerIt() #for grammar
 
 # =============================================================================
 # PARAMETERS to Update or tune
@@ -282,7 +284,7 @@ def reading_event(trajectory, custom_embeddings, embeddings2D, event_data):
     #--2-- Haiku generation and Reading
     # =============================================================================
     print("-step 2---Generate Haiku")
-    haiku=generate_haiku(trinity, templates, dico)
+    haiku=generate_haiku(trinity, templates, dico, gingerParser)
     client.emit(Message('speak', data={'utterance': haiku}))
     #save it
     with open(READING_EVENT_FOLDER+ "haiku_event_"+ event_id+ '.txt', 'w+') as f:

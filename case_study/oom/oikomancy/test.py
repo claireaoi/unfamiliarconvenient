@@ -16,6 +16,8 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from datetime import datetime
 
+from gingerit.gingerit import GingerIt
+gingerParser= GingerIt() #for grammar
 
 # =============================================================================
 # PARAMETERS to Update or tune
@@ -227,7 +229,7 @@ def reading_event(trajectory, custom_embeddings, embeddings2D, event_data):
     #--2-- Haiku generation and Reading
     # =============================================================================
     print("-step 2---Generate Haiku")
-    haiku=generate_haiku(trinity, templates, dico)
+    haiku=generate_haiku(trinity, templates, dico, gingerParser)
     trinity=[keys[i] for i in indices] #seems needed to redefine it as original else trinity got "consumed" by Haiku generation
     #save it
     with open(READING_EVENT_FOLDER+"haiku_event_"+ event_id+ '.txt', 'w+') as f:
@@ -249,6 +251,8 @@ def reading_event(trajectory, custom_embeddings, embeddings2D, event_data):
 # =============================================================================
 # Actual Script running in loop
 # =============================================================================
+
+
 
 print("=============================================================================")
 print("****** Launching a new RITUAL ******")
@@ -293,8 +297,9 @@ print("reinitialized.")
 
 
 # =============================================================================
-# Actual Script running in loop
+# TEMP
 # =============================================================================
+# haiku=generate_haiku(["bathtub", "internet", "duck"], templates, dico, gingerParser)
 
 # while True:
 #     print("=============================================================================")

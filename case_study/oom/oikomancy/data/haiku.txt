@@ -1,12 +1,14 @@
 a Xs -
 X -
-Y-
-P0 Ns and P0 Ns ,
+Y -
+Nfa -
+P0 Ns and//or P0 Ns ,
 P0 Xs ,
-while S V
-while S Ad2 V
-The Ns Ad2 A -
+while S//Ns V
+while S//Ns Ad2 V
+The Ns Ad2 A0 -
 PR0
+PR0a
 Vg X -
 
 X V
@@ -22,34 +24,15 @@ a Ns Vtg a Xs
 - these Xp
 like ASA
 as a Xs
-how A !
+Oh A Na !
 P0 the X
 and S V 
 Vg P0 the Ns
-PR1 X
-- should//would S V//be/A ?
+- somehow PR1
 - why Vg//Vtg ?
-- how could S V//be/A ?
-- can you//they hear//see//feel//touch//reach//taste//grasp the X ?
+- can S//N V the Nfa ?
+- Vd as Nfa
 
->>>
-It sounds//smells//seems like Ns/N2//A/N
-You sound//smell//are like Ns/N2//A/N
-
-P X
-Vg P0 X
-PR1 X
-PR0
-Vg N , Vg N
-P0 Vg X
-
-and Y
-like ASA
-and X
-- can you hear//see//feel//touch//reach//taste//grasp the X ?
-- Y
-As if you were A
-As it was A
 
 >>>
 Ad1 , a Xs
@@ -57,8 +40,8 @@ X
 Y
 Xp
 X P X
-O Xs ,
-The Ns Ad2 A ,
+The Ns Ad2 A0 ,
+Nfa ,
 
 V P0 X
 V Ad3
@@ -71,32 +54,37 @@ Vtg a Xs
 - these Xp
 like ASA
 as a Xs
-how A !
+Oh A Na !
 with ESS
 P0 the X
-PR1 X
-- should//would S V//be/A ?
+- somehow PR1
 - why Vg//Vtg ?
-- how could S V//be/A ?
-- can you//they hear//see//feel//touch//reach//taste//grasp the X ?
+- sounds like Nfa ?
+- Vd as Nfa
+
 
 >>>
 a Xs -
 X -
 Y -
+P0 Vg X
 P0 Y ,
 P0 Ns and P0 Ns ,
 P0 Xs ,
-while S V
-while S Ad2 V
-PR1 X
+while S//N V
+while S//N Ad2 V
+PR1
 PR0
+PR0a
 
-The X P the X
-The X , PR1 X
+The X P X
+The X , PR1
 Y
+Vg N , Vg N
+X Vg
+Nfa
 
-Seem//Look A
+seem//look A
 V P0 X
 V Ad3
 Ad2 V
@@ -104,41 +92,12 @@ Vt the X
 Vg P0 X
 Vtg a Xs
 
->>>
-a Xs -
-X -
-Y -
-Vtg the N ,
-P0 Ns and P0 Ns ,
-P0 Xs ,
-PR0 ,
-Vg N -
-
-Ad1 , S V
-S V Ad3
-S Ad2 V
-S Vt the X
-
-- a Xs
-- these Xp
-like ASA
-as a Xs
-how A !
-P0 the X
-A as Ns
-A as the Ns N2
-PR1 X
-- should//would S V//be/A ?
-- why Vg//Vtg ?
-- how could S V//be/A ?
-- can you//they hear//see//feel//touch//reach//taste//grasp the X ?
 
 >>>
 Ad2 Vg 
 Vtg the N ,
-Everything S Vt ,
+Everything S//N Vt ,
 
-MA and Ad2
 - The X P the X -
 - these Xp these Xp -
 A as Ns
@@ -148,112 +107,67 @@ A as the Ns N2
 V P0 the X
 V as a Xs
 
->>>
-S want//wish//care//hope//incline//long//offer//prepare//promise//pretend//seem//vow//tend//learn to V
-Vg X
-
-Vt the X
-Vtg the X
-Vg P0 X
-
-MA
-Like ASA
-As a Xs
-PR0
-PR1 X
-- how A S feel//seem//appear//sound
 
 >>>
 A Xs
 Y
+Nfa ,
 
 P X
+A , A and A
 Too A to V
 Too A to Vt N
-PR1 X ,
+PR1 ,
+PR1a ,
 PR0 ,
+PR0a ,
 
-- the X
-- Y
-A , A and Ad2 A
-As a Xs
-Like ASA
 Vg and Vg
+Vt N
+Ad2 V
+
 
 >>>
-a Xs -
-X -
-Y -
-P0 Ns and P0 Ns ,
-P0 Xs ,
-while S V
-while S Ad2 V
-The Ns Ad2 A -
+From the X ,
+P0 the X
 PR0 ,
+PR1a ,
+PR1 ,
 
-X Vt
-X Ad2 Vt
+Past the X ,
+To the X ,
+P0 the X
+PR0 ,
+PR1a ,
+PR1 ,
 
+a Xs
 X
 Y
-X P X
-N Ad2 A
+Nfa
+the X V
+A Xs V
+the N Ad2 A0
+
 
 >>>
 The X V
+Nfa ,
+While X Vg 
 
 Vg P0 X ,
 Vtg X ,
 A as Ns
 A as the Ns N2
+PR1
+PR1a
 
 - a Xs
 - Y
 - these Xp
 like ASA
 as a Xs
-how A !
+Oh A Na !
 and S V 
-PR1 X
-
->>>
-From the X ,
-P0 the X
-PR0 ,
-
-Past the X ,
-To the X ,
-P0 the X
-PR0 ,
-
-a Xs
-X
-Y
-the X V
-A Xs V
-the N Ad2 A
-
->>>
-Xp are A
-Xs is A
-PR1 X ,
-P0 X ,
-
-Xs is A ,
-Xp are A ,
-
-And so are you
-Everything seem//look//is//sound//taste A
-
->>>
-Ad2 V
-V Ad2 and Ad2
-
-As one who Vtd N ,
-As one who Vd ,
-As if you V ,
-As if you were A ,
-
-P X
-MA
-PR1 X
+PR1
+as Nfa

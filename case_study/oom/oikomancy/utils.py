@@ -84,8 +84,11 @@ def initialize(filenames, graph_path, words_path, embeddings_path, embeddings2D_
 # =============================================================================
 
 def pick_template(templates):
+    print("Template 5: ", templates[4])
+    print("Template 6: ", templates[5])
     template_=random.choice(templates)
     template=template_.split("\n\n")
+    print(template)
     final_template=[]
     for el in template:
         lines=el.split("\n")
@@ -111,7 +114,7 @@ def read(line, seeds=[], dico=None):
 
 def readUnit(unit, seeds=[], dico=None):
     #-----may use seeds----
-    if unit in ["N","N2", "Ns", "N2s", "Na"]:
+    if unit in ["S", "N","N2", "Ns", "N2s"]:
         if len(seeds)>0:
             bla=seeds[0]
             seeds.pop(0)
@@ -119,9 +122,10 @@ def readUnit(unit, seeds=[], dico=None):
             bla, w=read(random.choice(dico[unit.replace("s","")]), dico=dico)
     #---------composite structures
     elif unit=="N2p" or unit=="Np":#Here dont caree about plural !
-        bla, seeds=read("N//Na//Pf/Na", seeds=seeds, dico=dico)
+        bla, seeds=read("N//Na", seeds=seeds, dico=dico)
     elif unit=="X" or unit=="Xs" or unit=="Xp":
-        bla, seeds=read("Duo//Duoa//N//Na//Na/N2//N/and/N//N2/P0/N//Pf/Na//Na/P0/N//A/A/N//A/N//Ns/N2//N2//N//A/N//Ns/N2//N2//N//A/N//Ns/N2//N//A/N//Ns/N2//N//A/N//Ns/N2//N//A/N//Ns/N2//N//A/N//Ns/N2//N//A/N//Ns/N2//N//A/N//Ns/N2//A/N2//A/N2//A/N2", seeds=seeds, dico=dico)
+        #has removed Duo//Duoa// compoared to old haiku
+        bla, seeds=read("N//Na//Na/N2//N/and/N//N2/P0/N//Pf/Na//Na/P0/N//A/A/N//A/N//Ns/N2//N2//N//A/N//Ns/N2//N2//N//A/N//Ns/N2//N//A/N//Ns/N2//N//A/N//Ns/N2//N//A/N//Ns/N2//N//A/N//Ns/N2//N//A/N//Ns/N2//N//A/N//Ns/N2//A/N2//A/N2//A/N2", seeds=seeds, dico=dico)
     elif unit=="X+":#to add to "the X ""...Ex: which...
         bla, seeds=read("whose/Na/W0//which/W//better/Vtd/that/W0//than/Vtd//which/have/been/PR1a//which/have/been/PR1//which/W0//the/X/PR1//thought/as/Nfa//we/are/trying/to/Vt//that/W0//that/we/allow/to/W0//we/are/Vtg//that/Ad2/W0//that/V+//that/have/become/A//that/do/not/W0//that/you/should/not/Vt", seeds=seeds, dico=dico)
     elif unit=="Y":
@@ -138,14 +142,14 @@ def readUnit(unit, seeds=[], dico=None):
         bla, seeds=read("Vd//Vd//Vtd/X//Vad//Vad//V2d//Vtd/Y//Vtd/Nfa", seeds=seeds, dico=dico)
     elif unit=="Wg":
         bla, seeds=read("Vg//Vg//Vtg/X//Vag//Vag//V2g//Vtg/Y//Vtg/Nfa", seeds=seeds, dico=dico)
-    elif unit=="XWg":#NEED ?
+    elif unit=="XWg": #NEED ?
         bla, seeds=read("X/Wg", seeds=seeds, dico=dico)
     elif unit=="PRO":
         bla, seeds=read("S/V//S/Vt/X//X/V//N/Vt/X//S/V/P0/X", seeds=seeds, dico=dico)
 
     #---not affecting seeds
-    elif unit=="A":
-        bla, w=read("A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0/A0//A0/A0//A0/A0/A0//Ad2/A0//A0//Ad2/A0//Ad2/A0//A0/A0//still/A0//A0/yet/A0//yet/A0//soon/A0//somehow/A0//already/A0", dico=dico)
+    elif unit=="A":#removed A0//A0/A0//A0/A0//A0/A0/A0//
+        bla, w=read("A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//Ad2/A0//A0//Ad2/A0//Ad2/A0//still/A0//A0/yet/A0//yet/A0//soon/A0//somehow/A0//already/A0", dico=dico)
     elif unit=="A0":
         bla, w=read(random.choice(dico["A"]), dico=dico)
     elif unit=="PR10":
@@ -155,19 +159,18 @@ def readUnit(unit, seeds=[], dico=None):
     #--------verbs
     elif unit=="Vd" or unit=="Vad" or unit=="Vtd" or unit=="V2d":
         verb=random.choice(dico[unit.replace("d", "")]).split(" ")
-        bla=verb
-        #TODO: This library need Python3.6 or 2.7... find replacement...
+        bla=verb[0]+"ed" #okay as after use grammar corrector
+        if len(verb)>0:
+            bla+=" "+' '.join(verb[1:])
+        #NOTE: Previous library Python issue ? 3.6 or 2.7... find replacement...
         # bla=lexeme(verb[0])[4] #past
-        # if len(verb)>0:
-        #     bla+=' '.join(verb[1:])
     elif unit=="Vag" or unit=="Vg" or unit=="Vtg" or  unit=="V2g":
         verb=random.choice(dico[unit.replace("g", "")]).split(" ")
-        bla=verb
-        #TODO: This library need Python3.6 or 2.7...
+        bla=verb[0]+"ing" #okay as after use grammar corrector
+        if len(verb)>0:
+            bla+=" "+' '.join(verb[1:])
         ## bla=lexeme(verb[0])[2] #present participe
         # #conjugate(verb[0], tense = "present",  person = 3,  number = "singular",  mood = "indicative", aspect = "progressive",negated = False)
-        # if len(verb)>0:
-        #     bla+=' '.join(verb[1:])
     #----remaining stuff
     elif unit in dico.keys():
         bla, w=read(random.choice(dico[unit]), dico=dico)
@@ -178,14 +181,14 @@ def readUnit(unit, seeds=[], dico=None):
     return bla, seeds
 
 
-def generate_haiku(seeds, templates, dico):
+def generate_haiku(seeds, templates, dico, grammarParser):
 
     """
     Args: 
         seeds: 3 words with which to generate an haiku
         templates: templates for Haiku
         dico: dictionnary of words, by genre (noun, adjective etc)
-
+        grammarParser: to parse grammar mistakes
     """
 
     #--chose a template for the Haiku
@@ -197,14 +200,18 @@ def generate_haiku(seeds, templates, dico):
     for line in template:
         bla, seeds=read(line, seeds=seeds, dico=dico)#return non used seeds
         haiku+=bla + "\n"
-    print("Generated Haiku \n", haiku)
+    print("Generated Haiku: \n", haiku)
 
-    #--clean&-speak it loud
+    #-correct grammmar mistakes, verb conjugations etc.
+    haiku=grammarParser.parse(haiku)['result']
+    print("Grammarly corrected Haiku: \n", haiku)
+
+    #-reformat
     haiku=haiku.replace("\n", ";")
-    haiku= re.sub("\s\s+"," ", haiku) #remove multiple blanks
-    #print("Formatted Haiku", haiku)
+    print("Formatted Haiku:", haiku)
 
     return haiku
+
 
 #--------------------------------------------
 #--------SEMANTIC SPACE REDEFINE PROCEDURES------------------
