@@ -22,13 +22,11 @@ Roomba Space Reading Ritual consist of
 
 ######## NOW:
 #TODO: Use satellite data or other to trigger this ? or to trigger arduino?
-#TODO: Haiku verb conjugation library
-#TODO: Haiku Tunings
-#TODO: Issue with words having 2 components or 3 even... torch.Size([2, 768])
-#TODO: CLEAN self graph.. there are letters like c
-#TODO: Test embeddings 
 
 ######## SOON should do: 
+#TODO: Improve 2D embeddng projection
+#TODO: What to do with words having 2 components or 3 even... torch.Size([2, 768])
+#TODO: Need CLEAN self graph? Stricter criteria to add self graph. As see there are letters like c
 #TODO: Modify back gpt2 model embeddings & test effect in generation
 #TODO: Visualisation better
 #TODO: Other tunings, parameters etc.
@@ -56,7 +54,7 @@ gingerParser= GingerIt() #for grammar
 # PARAMETERS to Update or tune
 # =============================================================================
 #------------------PATHS----------
-# #NOTE: CHANGE all these PATH when uploading the script !
+# #NOTE: Update Paths
 GRAPH_PATH = "./oikomancy/graph.json"# This path is temporary, it should refer to the fallbackassociative skill folder: /home/unfamiliarconvenient/.mycroft/fallback-associative/graph.json"
 WORDS_PATH="./oikomancy/data/" #Modify when...
 EMBEDDINGS_PATH="./oikomancy/custom_embeddings.json" #where save words embeddings

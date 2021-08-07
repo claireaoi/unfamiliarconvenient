@@ -15,10 +15,11 @@ from os import path
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
 #------------------PATHS----------
+#NOTE: UPDATE paths when test...
 EMBEDDINGS_PATH="./oikomancy/custom_embeddings.json" #where save words embeddings
 EMBEDDINGS2D_PATH="./oikomancy/custom_embeddings2D.npy" #where save words embeddings
 GRAPH_PATH = "./oikomancy/graph.json"# This path is temporary, it should refer to the fallbackassociative skill folder: /home/unfamiliarconvenient/.mycroft/fallback-associative/graph.json"
-PATH_ML_MODEL=""  #path to your fine tuned model, If empty, would use default model #NOTE: UPDATE this to actual model.
+PATH_ML_MODEL=""  #path to your fine tuned model, If empty, would use default model 
 
 
 ########## TO MIGRATE WITHIN FALLBACK SKILL VA #################

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-    #NOTE: CHANGED THE PROCEDURE TO TEST IT 
 
 #----------------------IMPORTS------------------------------------------
 from string import punctuation
@@ -23,7 +22,7 @@ gingerParser= GingerIt() #for grammar
 # PARAMETERS to Update or tune
 # =============================================================================
 #------------------PATHS----------
-# #NOTE: CHANGE all these PATH when uploading the script !
+# #NOTE: Update paths
 GRAPH_PATH = "./oikomancy/graph.json"# This path is temporary, it should refer to the fallbackassociative skill folder: /home/unfamiliarconvenient/.mycroft/fallback-associative/graph.json"
 WORDS_PATH="./oikomancy/data/" #Modify when...
 EMBEDDINGS_PATH="./oikomancy/custom_embeddings.json" #where save words embeddings
@@ -297,38 +296,9 @@ print("reinitialized.")
 
 
 # =============================================================================
-# TEMP
+# TEMP to test HAIKU
 # =============================================================================
 # haiku=generate_haiku(["bathtub", "internet", "duck"], templates, dico, gingerParser)
-
-# while True:
-#     print("=============================================================================")
-#     print("******+ Launching a new RITUAL ******+")
-#     print("=============================================================================")
-
-#     print("=============================================================================")
-#     print("******+ SPATIAL DANCE ******+")
-#     print("=============================================================================")
-#     # listen to Arduino trajectory in real time, save coordinates and draw graph
-#     #NOTE: currently stop listening after a certain number of frames. Could also be related to an ending signal (if arduino sends it...)
-#     plt.figure(figsize=(10,5))
-#     #compute for how many frames fo the ritual
-#     num_frames_trajectory=random.randint(MIN_FRAMES, MAX_FRAMES)
-#     ani = FuncAnimation(plt.gcf(), spatial_ritual, frames=num_frames_trajectory, interval=INTERVAL_LISTEN) 
-#     plt.show(block=True)
-#     trajectory = trajectory[:-1] #because the trajectory had one more point than when wee looked for concepts...
-
-#     print("=============================================================================")
-#     print("******+ SPIRITUAL READING ****** ")
-#     print("=============================================================================")
-#     trinity, custom_embeddings=reading_event(trajectory, custom_embeddings, embeddings2D, event_data)
-
-#     print("=============================================================================")
-#     print("******+END ******+")
-#     print("=============================================================================")
-#     #--reinit some variables before next ritual
-#     reinit()
-
 
 
 
