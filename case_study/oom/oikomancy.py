@@ -18,10 +18,7 @@ Roomba Space Reading Ritual consist of
     - generate Haiku from it & say it aloud
 
 """
-# NOTE: self is world and world is self...for VA
-
 ######## NOW:
-# TODO: Use satellite data or other to trigger this ? or to trigger arduino?
 
 ######## SOON should do:
 # TODO: Improve 2D embeddng projection
@@ -70,7 +67,7 @@ GRAPH_PATH = "/home/unfamiliarconvenient/.mycroft/fallback-associative/graph.jso
 WORDS_PATH = "./data/"  # Modify when...
 EMBEDDINGS_PATH = "./custom_embeddings.json"  # where save words embeddings
 EMBEDDINGS2D_PATH = "./custom_embeddings2D.npy"  # where save words embeddings
-READING_EVENT_FOLDER = "./outputs/"
+OUTPUT_FOLDER = "./outputs/"
 
 # str(pathlib.Path(__file__).parent.absolute()) #may use path lib...
 
@@ -81,7 +78,7 @@ MIN_FRAMES = 100
 # threshold to judge if 3 points are almost aligned; sensitivity may be tuned
 COLINEARITY_THRESHOLD = 0.05
 # NOTE: change the scale embeddings depending on the room size.
-EMBEDDINGS_SCALE = 30000
+ROOM_RADIUS = 30#30000
 # How often frames are drawn in the graph / Depends how often Roomba sends data
 INTERVAL_LISTEN = 721
 # Roomba sattelite threshold
@@ -149,9 +146,8 @@ print("Initializing Self...")
 self_graph, dico, templates, custom_embeddings, embeddings2D = initialize(
     FILENAMES, GRAPH_PATH, WORDS_PATH, EMBEDDINGS_PATH, EMBEDDINGS2D_PATH
 )
+num_concepts=len(list(self_graph.keys()))
 
-# ---rescale 2D embeddings if needed, depending space
-embeddings2D = EMBEDDINGS_SCALE * embeddings2D
 
 # --to save all points trajectory
 global x_vals
@@ -164,6 +160,12 @@ trajectory = []
 # --to save concepts related to the space reading, with their associated distance & closer points in the trajectory
 global event_data
 event_data = dict()
+global idx_event_concepts #keep track of the concepts said in an even to avoid repetition
+idx_event_concepts=[]
+
+#to downscale the trajectory coordinates; want them between -1 and 1 always
+global scaling_factor
+scaling_factor = ROOM_RADIUS * 1000
 
 # set num frames
 global num_frames
@@ -272,6 +274,8 @@ def spatial_ritual(i):
     global num_frames
     global trigger
     global sock
+    global idx_event_concepts
+    global scaling_factor
 
     print("Frame {}".format(i))
 
@@ -297,9 +301,20 @@ def spatial_ritual(i):
             x = float(x)
             y = float(y)
 
-            # --save data trajectory
-            x_vals.append(x)
-            y_vals.append(y)
+            ######UPDATING SCALING FACTOR ?
+            # #---sanity check to ensure room radius is good, else update room radius:
+            # #NOTE: although rescaling trajectory during event may fuck up the coordinates !
+            # if x>scaling_factor or x<-scaling_factor :
+            #     scaling_factor = scaling_factor, abs(x) + 1000 #add a margin of 1 meter
+            # if y>scaling_factor or y<-scaling_factor:
+            #     scaling_factor = max(scaling_factor, abs(y) + 1000) #add a margin of 1 meter rel where is
+            
+
+            # --save data trajectory after rescaling
+            #NOTE: rescale here coordinates for them to be between -1 and 1; may adjust it ?
+            x_vals.append(x / scaling_factor)
+            y_vals.append(y / scaling_factor)
+
 
             # --save plot frame
             plt.cla()
@@ -332,10 +347,9 @@ def spatial_ritual(i):
                 else:
                     # means a turn happened, so will read aloud closer previous point (beware, a lil delay as look at previous point!)
                     # get idx and distance nearest concept of this point
-                    idx, dist = nearest_concept(embeddings2D, trajectory[-1])
+                    idx, dist = nearest_concept(embeddings2D, trajectory[-1], idx_event_concepts)
                     # get word attached to that idx
                     new_closer_concept = list(custom_embeddings.keys())[idx]
-                    # NOTE: Refer to the trajectory points values to adjust EMBEDDINGS_BOUND, else would always output same concept
                     print(
                         "--looking at trajectory point {}. Here is {}".format(
                             trajectory[-1], new_closer_concept
@@ -348,11 +362,10 @@ def spatial_ritual(i):
 
                     # --update event data
                     # save data of close concepts and distance
-                    # NOTE: beware this concept may be already in registered concept, in which case,
-                    # update the idx of the trajectory point only if closer than last time registered
                     event_data = update_event_data(
                         new_closer_concept, dist, len(trajectory) - 1, event_data
                     )
+                    idx_event_concepts.append(idx)
 
                     # add new point to trajectory (at least temporarily)
                     trajectory.append(new_point)
@@ -385,6 +398,7 @@ def reading_event(trajectory, custom_embeddings, embeddings2D, event_data):
     # --1--  Extract 3 Closer concepts
     # =============================================================================
     print("-step 1--Extract 3 closer concepts")
+    #NOTE: here do not have to choose closer concepts necessarily?
     keys = list(event_data.keys())
     values = list(event_data.values())
     distances = [val[0] for val in values]
@@ -392,6 +406,8 @@ def reading_event(trajectory, custom_embeddings, embeddings2D, event_data):
     trinity = [keys[i] for i in indices]
     trinity_idx = [values[i][1] for i in indices]
     trinity_trajectory = [trajectory[idx] for idx in trinity_idx]
+    #check points are different:
+    assert not (trinity[0]==trinity[1] or trinity[0]==trinity[2] or trinity[1]==trinity[2])
     print("Event trinity Core: {}".format(trinity))
     print(
         "In correspondance with the 3 domesticoCosmic points n° {}".format(trinity_idx)
@@ -403,9 +419,9 @@ def reading_event(trajectory, custom_embeddings, embeddings2D, event_data):
     print("-step 2---Generate Haiku")
     haiku = generate_haiku(trinity, templates, dico, gingerParser)
     client.emit(Message("speak", data={"utterance": haiku}))
-    # save it
-    with open(READING_EVENT_FOLDER + "haiku_event_" + event_id + ".txt", "w+") as f:
-        f.writelines(haiku.split(";"))
+    # save it: no, now save it in dictionnary
+    # with open(OUTPUT_FOLDER + "haiku_event_" + event_id + ".txt", "w+") as f:
+    #    f.writelines(haiku.split(";"))
 
     # =============================================================================
     # --3-- Redefine embeddings of these 3 concepts
@@ -459,6 +475,8 @@ while True:
             plt.figure(figsize=(10, 5))
             # compute for how many frames fo the ritual
             num_frames = random.randint(MIN_FRAMES, MAX_FRAMES)
+            #max num frames of the nb words in self graph, else will run out of concepts...
+            num_frames=max(num_frames, num_concepts)
             print("Performing spatial ritual for {} frames".format(num_frames))
             ani = FuncAnimation(
                 plt.gcf(),
@@ -491,14 +509,23 @@ while True:
             print(
                 "============================================================================="
             )
-            print("Save new Event Chart")
+            print("Save Event Data...")
+            #NOTE: Full event data is a dictionnary which contain both the haiku generated and the event data (event_data):
+            full_event_data=dict()
+            full_event_data["haiku"]=haiku
+            full_event_data["data"]=event_data
+            event_data_path=OUTPUT_FOLDER + event_id + "_event_data.json"
+            with open(event_data_path, "w+") as fp:
+                json.dump(full_event_data, fp)
+
+            print("Save Event Chart...")
             # --visualise Event Chart
+            chart_path=OUTPUT_FOLDER + event_id + "_event_chart.png"
             visualize_event_chart(
                 trajectory,
                 trinity_trajectory,
                 haiku,
-                event_id=event_id,
-                output_folder=READING_EVENT_FOLDER,
+                output_path=chart_path
             )
             print("Saved new Event Chart!")
 

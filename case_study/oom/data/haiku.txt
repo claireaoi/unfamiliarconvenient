@@ -2,23 +2,23 @@ a Xs -
 X -
 Y -
 Nfa -
-P0 Ns and//or P0 Ns ,
+P0 N and//or P0 N ,
 P0 Xs ,
-while S//Ns V
-while S//Ns Ad2 V
+while S//N V
+while S//N Ad2 V
 The Ns Ad2 A0 -
 PR0
 PR0a
 Vg X -
 
 X V
-a Ns V
-Ad1 , a Ns V
-a Ns V Ad3
-a Ns Ad2 V
-a Ns Vt the X
-a Ns Vg
-a Ns Vtg a Xs
+a N V
+Ad1 , a N V
+a N V Ad3
+a N Ad2 V
+a N Vt the X
+a N Vg
+a N Vtg a Xs
 
 - a Xs
 - these Xp
@@ -40,7 +40,7 @@ X
 Y
 Xp
 X P X
-The Ns Ad2 A0 ,
+The N Ad2 A0 ,
 Nfa ,
 
 V P0 X
@@ -69,7 +69,7 @@ X -
 Y -
 P0 Vg X
 P0 Y ,
-P0 Ns and P0 Ns ,
+P0 N and P0 N ,
 P0 Xs ,
 while S//N V
 while S//N Ad2 V
@@ -157,8 +157,8 @@ While X Vg
 
 Vg P0 X ,
 Vtg X ,
-A as Ns
-A as the Ns N2
+A as N
+A as the N N2
 PR1
 PR1a
 

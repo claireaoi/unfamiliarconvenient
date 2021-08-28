@@ -34,17 +34,28 @@ def approximately_colinear(p1,p2,p3, threshold=0.05):
     return colinear
 
 
-def nearest_concept(points, ref):
+def nearest_concept(points, ref, excluded_id):
     """
-        Find nearest point from a list to a point
+        Find nearest point from a list to a point, which are not in excluded_id
         Inputs:
             points: list of point
             ref: one point compare to
+            excluded_id: list of idx
         Outputs:
             idx: index of this point in points
             dist[idx]: distance of this point to ref
     """
+    #-0---turn excluded_ids into a np array
+    excluded_ids=np.array(excluded_id)
+
+    #-1---compute distance of points in points with trajectory ref
     dist=[np.linalg.norm(point - ref) for point in points]
+    
+    #-2---change all value dist in the excluded ids to very high value to be sure they are not picked by min later
+    HORIZON=1000000000
+    dist[excluded_ids]=HORIZON
+
+    #-3-----take min
     idx = np.argmin(dist)
     return idx, dist[idx]
 
@@ -114,15 +125,16 @@ def read(line, seeds=[], dico=None):
 
 def readUnit(unit, seeds=[], dico=None):
     #-----may use seeds----
-    if unit in ["S", "N","N2", "Ns", "N2s"]:
+    if unit in ["S", "N","N2", "Ns", "N2s", "N2p", "Np"]:
+        #NOTE: here dont caree about plural !
         if len(seeds)>0:
             bla=seeds[0]
             seeds.pop(0)
         else:
-            bla, w=read(random.choice(dico[unit.replace("s","")]), dico=dico)
+            unit=unit.replace("s","")
+            unit=unit.replace("p","")
+            bla, w=read(random.choice(dico[unit]), dico=dico)
     #---------composite structures
-    elif unit=="N2p" or unit=="Np":#Here dont caree about plural !
-        bla, seeds=read("N//Na", seeds=seeds, dico=dico)
     elif unit=="X" or unit=="Xs" or unit=="Xp":
         #has removed Duo//Duoa// compoared to old haiku
         bla, seeds=read("N//Na//Na/N2//N/and/N//N2/P0/N//Pf/Na//Na/P0/N//A/A/N//A/N//Ns/N2//N2//N//A/N//Ns/N2//N2//N//A/N//Ns/N2//N//A/N//Ns/N2//N//A/N//Ns/N2//N//A/N//Ns/N2//N//A/N//Ns/N2//N//A/N//Ns/N2//N//A/N//Ns/N2//A/N2//A/N2//A/N2", seeds=seeds, dico=dico)
@@ -181,6 +193,30 @@ def readUnit(unit, seeds=[], dico=None):
     return bla, seeds
 
 
+def generate_one_haiku(seeds, templates, dico, grammarParser):
+
+    """
+    Args: 
+        seeds: 3 words with which to generate an haiku
+        templates: templates for Haiku
+        dico: dictionnary of words, by genre (noun, adjective etc)
+        grammarParser: to parse grammar mistakes
+    """
+    remaining_seeds=seeds
+    
+    #-1--chose a template for the Haiku
+    template = pick_template(templates)
+    print("Picked a template", template)
+
+    #-2---generate Haiku line by line
+    haiku=""
+    for line in template:
+        bla, remaining_seeds=read(line, seeds=remaining_seeds, dico=dico)#return non used seeds
+        haiku+=bla + "\n"
+    print("Generated Haiku: \n", haiku)
+
+    return haiku, remaining_seeds
+
 def generate_haiku(seeds, templates, dico, grammarParser):
 
     """
@@ -190,23 +226,19 @@ def generate_haiku(seeds, templates, dico, grammarParser):
         dico: dictionnary of words, by genre (noun, adjective etc)
         grammarParser: to parse grammar mistakes
     """
+    assert len(seeds)==3
 
-    #--chose a template for the Haiku
-    template = pick_template(templates)
-    print("Picked a template", template)
 
-    #--generate Haiku
-    haiku=""
-    for line in template:
-        bla, seeds=read(line, seeds=seeds, dico=dico)#return non used seeds
-        haiku+=bla + "\n"
-    print("Generated Haiku: \n", haiku)
+    #-1---generate haiku until use at least 2 seeds (so remain less than 1, because 3 seeds originally):
+    remaining_seeds=seeds
+    while len(remaining_seeds)>1:
+        haiku, remaining_seeds=generate_one_haiku(seeds, templates, dico, grammarParser)
 
-    #-correct grammmar mistakes, verb conjugations etc.
+    #-2---correct grammmar mistakes, verb conjugations etc.
     haiku=grammarParser.parse(haiku)['result']
     print("Grammarly corrected Haiku: \n", haiku)
 
-    #-reformat
+    #-3---reformat
     haiku=haiku.replace("\n", ";")
     print("Formatted Haiku:", haiku)
 
@@ -253,6 +285,7 @@ def update_event_data(new_closer_concept, dist, point_idx, event_data):
     Output:
         event_data: dictionnary whose keys are string (concepts) and values are list [float, int] (which are distances, reps. idx of corresponding trajectory point in our case)
     """
+    #TODO: Now should each time get different concepts with the new code, so may straightly register it !
 
     if new_closer_concept not in list(event_data.keys()):
         #new concept, then add it with as values idx point trajectory and word
@@ -266,7 +299,7 @@ def update_event_data(new_closer_concept, dist, point_idx, event_data):
 #--------------------------------------------
 #--------DRAWING PROCEDURES------------------
 #---------------------------------------
-def draw_event_chart(trajectory, trinity_trajectory, haiku, event_id="000", output_folder=""):
+def visualize_event_chart(trajectory, trinity_trajectory, haiku, output_path="./000.png"):
     """
     Final drawing
     #TODO: Better rendering: only figure here save separately haiku w/ same id.
@@ -311,25 +344,8 @@ def draw_event_chart(trajectory, trinity_trajectory, haiku, event_id="000", outp
 
 
     #show
-    plt.savefig(output_folder+"event_chart_"+ event_id+ '.png')
+    plt.savefig(output_path)
     #plt.close()
-
-
-
-
-def visualize_event_chart(trajectory, trinity_trajectory, haiku, event_id="000", output_folder=""):
-    """
-    Final visualisation...
-    #for now same than drawing procedure above...
-    """
-    #draw & save the trajectory 
-    draw_event_chart(trajectory, trinity_trajectory, haiku, event_id=event_id, output_folder=output_folder)
-
-
-
-
-
-
 
 
 # ######### TESTS PROCEDURES ABOVE ###########

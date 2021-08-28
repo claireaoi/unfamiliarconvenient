@@ -42,7 +42,7 @@ INTERVAL_LISTEN=752
 #threshold to judge if 3 points are almost aligned; sensitivity may be tuned
 COLINEARITY_THRESHOLD=0.05 
 #bound for embeddings
-EMBEDDINGS_SCALE=1 #
+ROOM_RADIUS=1 #
 
 
 # =============================================================================
@@ -76,7 +76,7 @@ print("Initializing Self...")
 self_graph, dico, templates, custom_embeddings, embeddings2D=initialize(FILENAMES, GRAPH_PATH, WORDS_PATH, EMBEDDINGS_PATH, EMBEDDINGS2D_PATH)
 
 #---rescale 2D embeddings if needed, depending space
-embeddings2D=EMBEDDINGS_SCALE*embeddings2D
+embeddings2D=ROOM_RADIUS*embeddings2D
 
 
 #set num frames
