@@ -1,0 +1,12 @@
+cd mycroft-core
+source .venv/bin/activate
+export PYTHONIOENCODING=UTF-8
+
+./start-mycroft.sh all
+
+For cli service: 
+start-mycroft.sh cli
+
+python3 ./case_study/scripts/interact.py
+
+Passwd team: Chr1stopher!
