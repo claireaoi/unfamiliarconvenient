@@ -33,6 +33,7 @@ from sematch.semantic.similarity import WordNetSimilarity
 wns = WordNetSimilarity()
 #For NLP and Wikipedia
 import nltk
+nltk.download('punkt')
 from nltk import word_tokenize, sent_tokenize, pos_tag
 from nltk.corpus import words, wordnet
 from nltk.stem.wordnet import WordNetLemmatizer

@@ -19,6 +19,7 @@ Roomba Space Reading Ritual consist of
 
 """
 ######## NOW:
+# TODO: Make embeddings more spread?
 
 ######## SOON should do:
 # TODO: Improve 2D embeddng projection
@@ -78,7 +79,7 @@ MIN_FRAMES = 100
 # threshold to judge if 3 points are almost aligned; sensitivity may be tuned
 COLINEARITY_THRESHOLD = 0.05
 # NOTE: change the scale embeddings depending on the room size.
-ROOM_RADIUS = 30#30000
+ROOM_RADIUS = 3
 # How often frames are drawn in the graph / Depends how often Roomba sends data
 INTERVAL_LISTEN = 721
 # Roomba sattelite threshold

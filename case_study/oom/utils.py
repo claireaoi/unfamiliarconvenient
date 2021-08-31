@@ -53,12 +53,19 @@ def nearest_concept(points, ref, excluded_id):
     
     #-2---change all value dist in the excluded ids to very high value to be sure they are not picked by min later
     HORIZON=1000000000
+    dist=np.array(dist)
     dist[excluded_ids]=HORIZON
 
     #-3-----take min
     idx = np.argmin(dist)
     return idx, dist[idx]
 
+# TEST :
+# points=[np.random.rand(2), np.random.rand(2)]
+# ref=np.random.rand(2)
+# excluded_id=[1]
+# idx, d=nearest_concept(points, ref, excluded_id)
+# print(idx, d)
 
 def initialize(filenames, graph_path, words_path, embeddings_path, embeddings2D_path):
     """ 
