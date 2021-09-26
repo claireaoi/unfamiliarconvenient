@@ -475,7 +475,7 @@ while True:
             )
             # listen to Arduino trajectory in real time, save coordinates and draw graph
             # NOTE: currently stop listening after a certain number of frames. Could also be related to an ending signal (if arduino sends it...)
-            plt.clf()
+            plt.clf()#clear graph
             plt.figure(figsize=(10, 5))
             # compute for how many frames fo the ritual
             num_frames = random.randint(MIN_FRAMES, MAX_FRAMES)
