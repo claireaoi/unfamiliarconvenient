@@ -251,6 +251,8 @@ def reinit():
     trajectory = []  # for MAIN points
     global event_data
     event_data = dict()
+    global idx_event_concepts
+    idx_event_concepts=[]
 
 
 # =============================================================================
