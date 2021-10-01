@@ -48,7 +48,7 @@ inflect==3.0.2
 inflection==0.3.1
 isodate==0.6.0
 jaraco.itertools==4.4.2
-Jinja2==2.10.3
+Jinja2==2.11.3
 joblib==0.15.1
 keyboard==0.13.5
 kiwisolver==1.2.0
