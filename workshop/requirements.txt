@@ -106,7 +106,7 @@ python-dateutil==2.6.0
 python-Levenshtein==0.12.0
 python-vlc==1.1.2
 pytz==2017.2
-PyYAML==5.1.2
+PyYAML==5.4
 rapidfuzz==0.7.6
 rdflib==5.0.0
 regex==2020.5.14
