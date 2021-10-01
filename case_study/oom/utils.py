@@ -58,7 +58,13 @@ def nearest_concept(points, ref, excluded_id):
 
     #-3-----take min
     idx = np.argmin(dist)
-    return idx, dist[idx]
+
+    #4---check if id is new or not
+    if idx in excluded_id:
+        neue=False
+    else:
+        neue=True
+    return idx, dist[idx], neue
 
 # TEST :
 # points=[np.random.rand(2), np.random.rand(2)]

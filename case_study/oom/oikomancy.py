@@ -81,7 +81,7 @@ COLINEARITY_THRESHOLD = 0.05
 # NOTE: change the scale embeddings depending on the room size.
 ROOM_RADIUS = 3
 # How often frames are drawn in the graph / Depends how often Roomba sends data
-INTERVAL_LISTEN = 721
+INTERVAL_LISTEN = 721 #NB: Could increase if want less point
 # Roomba sattelite threshold
 SAT_THRESHOLD = 20
 
@@ -171,8 +171,21 @@ scaling_factor = ROOM_RADIUS * 1000
 # set num frames
 global num_frames
 num_frames = random.randint(MIN_FRAMES, MAX_FRAMES)
+
+global warm_up
+warm_up=20 #number of initial frame to warm up for the roomba, where will not read a word just go to a point in space.
+
+global max_concept_per_event
+max_concept_per_event=23  #maximum number of concepts roomba is saying #NOTE: Could vary it too
+
 # --time tracker
 # start_time = time.time()
+
+global REDEFINE_EMBEDDINGS
+REDEFINE_EMBEDDINGS=True 
+
+global end_reading
+end_reading=False
 
 # set event id
 global event_id
@@ -253,6 +266,8 @@ def reinit():
     event_data = dict()
     global idx_event_concepts
     idx_event_concepts=[]
+    global end_reading
+    end_reading=False
 
 
 # =============================================================================
@@ -279,10 +294,13 @@ def spatial_ritual(i):
     global sock
     global idx_event_concepts
     global scaling_factor
+    global warm_up
+    global end_reading
 
-    print("Frame {}".format(i))
+    print("Frame {}".format(i-warm_up))
 
-    if i == num_frames - 1:  # NOTE: currently last frame save & close the plot
+
+    if i == num_frames + warm_up - 1:  # NOTE: currently last frame save & close the plot
         # plt.savefig('./outputs/full_trajectory_event_'+ event_id+ '.png')
         print("Ending Spatial Dance!")
         # Send signal to arduino to stop roomba trajectory
@@ -293,7 +311,7 @@ def spatial_ritual(i):
             trigger = False
             sent = True
         plt.close()
-    else:
+    elif i>=warm_up and (not(end_reading)): #only listen after an initial warm up, and if did not trigger end of reading
         # ---listen to Arduino
         message = roomba_listen()
 
@@ -335,7 +353,8 @@ def spatial_ritual(i):
             new_point = [x, y]
 
             # check if new point aligned with 2 previous point if nb point >=2
-            if len(trajectory) >= 2:
+            # and if it has not reached the maximum concept number per reading:
+            if len(trajectory) >= 2 and len(idx_event_concepts)<max_concept_per_event:
                 aligned = approximately_colinear(
                     trajectory[-2],
                     trajectory[-1],
@@ -348,30 +367,35 @@ def spatial_ritual(i):
                     # NOTE: This is a way to clean the trajectory, in the sense it removes intermediary points on the same line,
 
                 else:
+
                     # means a turn happened, so will read aloud closer previous point (beware, a lil delay as look at previous point!)
                     # get idx and distance nearest concept of this point
-                    idx, dist = nearest_concept(embeddings2D, trajectory[-1], idx_event_concepts)
-                    # get word attached to that idx
-                    new_closer_concept = list(custom_embeddings.keys())[idx]
-                    print(
-                        "--looking at trajectory point {}. Here is {}".format(
-                            trajectory[-1], new_closer_concept
+                    idx, dist, neue = nearest_concept(embeddings2D, trajectory[-1], idx_event_concepts)
+                    
+                    if neue: #say concept only if new concept
+                        # get word attached to that idx
+                        new_closer_concept = list(custom_embeddings.keys())[idx]
+                        print(
+                            "--looking at trajectory point {}. Here is {}".format(
+                                trajectory[-1], new_closer_concept
+                            )
                         )
-                    )
-                    # say it aloud
-                    client.emit(
-                        Message("speak", data={"utterance": new_closer_concept})
-                    )
+                        # say it aloud
+                        client.emit(
+                            Message("speak", data={"utterance": new_closer_concept})
+                        )
 
-                    # --update event data
-                    # save data of close concepts and distance
-                    event_data = update_event_data(
-                        new_closer_concept, dist, len(trajectory) - 1, event_data
-                    )
-                    idx_event_concepts.append(idx)
+                        # --update event data
+                        # save data of close concepts and distance
+                        event_data = update_event_data(
+                            new_closer_concept, dist, len(trajectory) - 1, event_data
+                        )
+                        idx_event_concepts.append(idx)
 
-                    # add new point to trajectory (at least temporarily)
-                    trajectory.append(new_point)
+                        # add new point to trajectory (at least temporarily)
+                        trajectory.append(new_point)
+                    else:#no new concept, end reading
+                        end_reading=True
 
             else:  # second point in traj
                 trajectory.append(new_point)
@@ -393,6 +417,7 @@ def reading_event(trajectory, custom_embeddings, embeddings2D, event_data):
         custom_embeddings: redefined embedding dictionary
 
     """
+
     num_points = len(trajectory)
     print("Reading Event of a trajectory of length {}".format(num_points))
     # NOTE: may have to work with sub trajectory if too big?
@@ -420,7 +445,7 @@ def reading_event(trajectory, custom_embeddings, embeddings2D, event_data):
     # --2-- Haiku generation and Reading
     # =============================================================================
     print("-step 2---Generate Haiku")
-    haiku = generate_haiku(trinity, templates, dico, gingerParser)
+    haiku = generate_haiku(trinity.copy(), templates, dico, gingerParser) #copy trinity to avoid affected
     client.emit(Message("speak", data={"utterance": haiku}))
     # save it: no, now save it in dictionnary
     # with open(OUTPUT_FOLDER + "haiku_event_" + event_id + ".txt", "w+") as f:
@@ -430,10 +455,11 @@ def reading_event(trajectory, custom_embeddings, embeddings2D, event_data):
     # --3-- Redefine embeddings of these 3 concepts
     # =============================================================================
     print("-step 3---Redefine embeddings of these 3 concepts")
-    custom_embeddings = redefine_embeddings(custom_embeddings, trinity)
-    # save it:
-    with open(EMBEDDINGS_PATH, "w") as fp:
-        json.dump(custom_embeddings, fp)
+    if len(trinity)==3 and REDEFINE_EMBEDDINGS: #ensure there are 3 concepts before redefining embeddings
+        custom_embeddings = redefine_embeddings(custom_embeddings, trinity)
+        # save it:
+        with open(EMBEDDINGS_PATH, "w") as fp:
+            json.dump(custom_embeddings, fp)
 
     return trinity, trinity_trajectory, custom_embeddings, haiku
 
@@ -450,6 +476,7 @@ roomba_connect()
 
 while True:
     global sock
+
 
     try:
         cleaning = roomba_listen()
@@ -480,14 +507,14 @@ while True:
             # compute for how many frames fo the ritual
             num_frames = random.randint(MIN_FRAMES, MAX_FRAMES)
             #max num frames of the nb words in self graph, else will run out of concepts...
-            num_frames=max(num_frames, num_concepts)
+            num_frames=min(num_frames, num_concepts-1)
             print("Performing spatial ritual for {} frames".format(num_frames))
             ani = FuncAnimation(
                 plt.gcf(),
                 spatial_ritual,
-                frames=num_frames,
+                frames=num_frames+warm_up,
                 interval=INTERVAL_LISTEN,
-                repeat=False,
+                repeat=False
             )
             plt.show(block=True)
             trajectory = trajectory[
@@ -541,6 +568,16 @@ while True:
         print("closing")
         sock.close()
         sys.exit()
+
+
+
+
+
+
+
+
+
+
 
 
 # -------------------------------------------------
