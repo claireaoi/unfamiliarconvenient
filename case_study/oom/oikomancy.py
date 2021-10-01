@@ -85,6 +85,11 @@ INTERVAL_LISTEN = 721 #NB: Could increase if want less point
 # Roomba sattelite threshold
 SAT_THRESHOLD = 20
 
+WARM_UP=20 #number of initial frame to warm up for the roomba, where will not read a word just go to a point in space.
+
+MAX_WORDS_PER_EVENT=23  #maximum number of concepts roomba is saying #NOTE: Could vary it too
+
+VISUALIZE=False
 
 # =============================================================================
 # INITIALISATION
@@ -171,12 +176,6 @@ scaling_factor = ROOM_RADIUS * 1000
 # set num frames
 global num_frames
 num_frames = random.randint(MIN_FRAMES, MAX_FRAMES)
-
-global warm_up
-warm_up=20 #number of initial frame to warm up for the roomba, where will not read a word just go to a point in space.
-
-global max_concept_per_event
-max_concept_per_event=23  #maximum number of concepts roomba is saying #NOTE: Could vary it too
 
 # --time tracker
 # start_time = time.time()
@@ -294,14 +293,14 @@ def spatial_ritual(i):
     global sock
     global idx_event_concepts
     global scaling_factor
-    global warm_up
     global end_reading
 
-    print("Frame {}".format(i-warm_up))
+    print("Frame {}".format(i-WARM_UP))
 
 
-    if i == num_frames + warm_up - 1:  # NOTE: currently last frame save & close the plot
-        # plt.savefig('./outputs/full_trajectory_event_'+ event_id+ '.png')
+    if i == num_frames + WARM_UP - 1:  # NOTE: currently last frame save & close the plot
+        if VISUALIZE:
+            plt.savefig('./outputs/full_trajectory_event_'+ event_id+ '.png')
         print("Ending Spatial Dance!")
         # Send signal to arduino to stop roomba trajectory
         sent = False
@@ -310,8 +309,9 @@ def spatial_ritual(i):
             sleep(1)
             trigger = False
             sent = True
-        plt.close()
-    elif i>=warm_up and (not(end_reading)): #only listen after an initial warm up, and if did not trigger end of reading
+        #plt.close()
+        
+    elif i>=WARM_UP and (not(end_reading)): #only listen after an initial warm up, and if did not trigger end of reading
         # ---listen to Arduino
         message = roomba_listen()
 
@@ -338,23 +338,25 @@ def spatial_ritual(i):
 
 
             # --save plot frame
-            plt.cla()
-            plt.plot(
-                x_vals,
-                y_vals,
-                color="mediumblue",
-                marker="2",
-                markevery=1,
-                markersize=5,
-                markeredgecolor="orangered",
-            )
+
+            if VISUALIZE:
+                plt.cla()
+                plt.plot(
+                    x_vals,
+                    y_vals,
+                    color="mediumblue",
+                    marker="2",
+                    markevery=1,
+                    markersize=5,
+                    markeredgecolor="orangered",
+                )
 
             # ----Check if new point +/- aligned with previous 2 points of trajectory (if trajectory length >2...)
             new_point = [x, y]
 
             # check if new point aligned with 2 previous point if nb point >=2
             # and if it has not reached the maximum concept number per reading:
-            if len(trajectory) >= 2 and len(idx_event_concepts)<max_concept_per_event:
+            if len(trajectory) >= 2 and len(idx_event_concepts)<MAX_WORDS_PER_EVENT:
                 aligned = approximately_colinear(
                     trajectory[-2],
                     trajectory[-1],
@@ -502,6 +504,7 @@ while True:
             )
             # listen to Arduino trajectory in real time, save coordinates and draw graph
             # NOTE: currently stop listening after a certain number of frames. Could also be related to an ending signal (if arduino sends it...)
+
             plt.clf()#clear graph
             plt.figure(figsize=(10, 5))
             # compute for how many frames fo the ritual
@@ -512,11 +515,11 @@ while True:
             ani = FuncAnimation(
                 plt.gcf(),
                 spatial_ritual,
-                frames=num_frames+warm_up,
+                frames=num_frames+WARM_UP,
                 interval=INTERVAL_LISTEN,
                 repeat=False
             )
-            plt.show(block=True)
+            # plt.show(block=True)
             trajectory = trajectory[
                 :-1
             ]  # because the trajectory had one more point than when wee looked for concepts...
