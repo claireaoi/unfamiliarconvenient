@@ -51,8 +51,6 @@ import time
 import bluetooth
 from time import sleep
 import sys
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
 from datetime import datetime
 
 from gingerit.gingerit import GingerIt
@@ -279,14 +277,12 @@ def ending_dance():
     global sock
     global trigger
     end_reading=True
-    # if VISUALIZE:
-    #     plt.savefig('./outputs/full_trajectory_event_'+ event_id+ '.png')
+
     print("Ending Spatial Dance!")
     # Send signal to arduino to stop roomba trajectory
     sock.send("d")
     sleep(1)
     trigger = False
-    #plt.close()
 
 def spatial_ritual(i, trajectory, end_reading):
     """
