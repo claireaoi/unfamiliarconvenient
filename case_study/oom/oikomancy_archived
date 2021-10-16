@@ -16,7 +16,6 @@ Roomba Space Reading Ritual consist of
     - clean trajectory
     - keep 3 closer concepts
     - generate Haiku from it & say it aloud
-
 """
 ######## NOW:
 # TODO: Make embeddings more spread?
@@ -74,7 +73,7 @@ OUTPUT_FOLDER = "./outputs/"
 
 # ---------------CONSTANTS MAY TUNE------------------------------
 # to decide length trajectory roomba:
-MAX_FRAMES = 150
+MAX_FRAMES = 200
 MIN_FRAMES = 100
 # threshold to judge if 3 points are almost aligned; sensitivity may be tuned
 COLINEARITY_THRESHOLD = 0.05
@@ -274,114 +273,133 @@ def reinit():
 # =============================================================================
 
 
-def ending_dance():
-    global end_reading
-    global sock
-    global trigger
-    end_reading=True
-    # if VISUALIZE:
-    #     plt.savefig('./outputs/full_trajectory_event_'+ event_id+ '.png')
-    print("Ending Spatial Dance!")
-    # Send signal to arduino to stop roomba trajectory
-    sock.send("d")
-    sleep(1)
-    trigger = False
-    #plt.close()
-
-def spatial_ritual(i, trajectory, end_reading):
+def spatial_ritual(i):
     """
     Spatial Ritual:
     - Listen to coordinate Sent by Arduino
     - If new interesting point (ie turn), would look up closer Self concept and say it aloud
     - Save the event data for future use
-
     Input: int, step of the trajectory
     """
 
     global x_vals
     global y_vals
+    global trajectory
     global event_data
+    global num_frames
+    global trigger
+    global sock
     global idx_event_concepts
     global scaling_factor
+    global end_reading
 
     print("Frame {}".format(i-WARM_UP))
 
-    # ---listen to Arduino
-    message = roomba_listen()
 
-    # if message contains coordinates
-    if message and message != "clearning" and message != "docking":
-
-        x, y = message.split(",", 1)
-        x = float(x)
-        y = float(y)
-
-        ######UPDATING SCALING FACTOR ?
-        # #---sanity check to ensure room radius is good, else update room radius:
-        # #NOTE: although rescaling trajectory during event may fuck up the coordinates !
-        # if x>scaling_factor or x<-scaling_factor :
-        #     scaling_factor = scaling_factor, abs(x) + 1000 #add a margin of 1 meter
-        # if y>scaling_factor or y<-scaling_factor:
-        #     scaling_factor = max(scaling_factor, abs(y) + 1000) #add a margin of 1 meter rel where is
+    if i == num_frames + WARM_UP - 1:  # NOTE: currently last frame save & close the plot
+        if VISUALIZE:
+            plt.savefig('./outputs/full_trajectory_event_'+ event_id+ '.png')
+        print("Ending Spatial Dance!")
+        # Send signal to arduino to stop roomba trajectory
+        sent = False
+        if not sent:
+            sock.send("d")
+            sleep(1)
+            trigger = False
+            sent = True
+        #plt.close()
         
+    elif i>=WARM_UP and (not(end_reading)): #only listen after an initial warm up, and if did not trigger end of reading
+        # ---listen to Arduino
+        message = roomba_listen()
 
-        # --save data trajectory after rescaling
-        #NOTE: rescale here coordinates for them to be between -1 and 1; may adjust it ?
-        x_vals.append(x / scaling_factor)
-        y_vals.append(y / scaling_factor)
+        # if message contains coordinates
+        if message and message != "clearning" and message != "docking":
 
-        # ----Check if new point +/- aligned with previous 2 points of trajectory (if trajectory length >2...)
-        new_point = [x, y]
+            x, y = message.split(",", 1)
+            x = float(x)
+            y = float(y)
 
-        # check if new point aligned with 2 previous point if nb point >=2
-        # and if it has not reached the maximum concept number per reading:
-        if len(trajectory) >= 2 and len(idx_event_concepts)<MAX_WORDS_PER_EVENT:
-            aligned = approximately_colinear(
-                trajectory[-2],
-                trajectory[-1],
-                new_point,
-                threshold=COLINEARITY_THRESHOLD,
-            )
-            if aligned:
-                # new point aligned with last 2, so replace last point with new point:
-                trajectory[-1] = new_point
-                # NOTE: This is a way to clean the trajectory, in the sense it removes intermediary points on the same line,
+            ######UPDATING SCALING FACTOR ?
+            # #---sanity check to ensure room radius is good, else update room radius:
+            # #NOTE: although rescaling trajectory during event may fuck up the coordinates !
+            # if x>scaling_factor or x<-scaling_factor :
+            #     scaling_factor = scaling_factor, abs(x) + 1000 #add a margin of 1 meter
+            # if y>scaling_factor or y<-scaling_factor:
+            #     scaling_factor = max(scaling_factor, abs(y) + 1000) #add a margin of 1 meter rel where is
+            
 
-            else:
+            # --save data trajectory after rescaling
+            #NOTE: rescale here coordinates for them to be between -1 and 1; may adjust it ?
+            x_vals.append(x / scaling_factor)
+            y_vals.append(y / scaling_factor)
 
-                # means a turn happened, so will read aloud closer previous point (beware, a lil delay as look at previous point!)
-                # get idx and distance nearest concept of this point
-                idx, dist, neue = nearest_concept(embeddings2D, trajectory[-1], idx_event_concepts)
-                
-                if neue: #say concept only if new concept
-                    # get word attached to that idx
-                    new_closer_concept = list(custom_embeddings.keys())[idx]
-                    print(
-                        "--looking at trajectory point {}. Here is {}".format(
-                            trajectory[-1], new_closer_concept
+
+            # --save plot frame
+
+            if VISUALIZE:
+                plt.cla()
+                plt.plot(
+                    x_vals,
+                    y_vals,
+                    color="mediumblue",
+                    marker="2",
+                    markevery=1,
+                    markersize=5,
+                    markeredgecolor="orangered",
+                )
+
+            # ----Check if new point +/- aligned with previous 2 points of trajectory (if trajectory length >2...)
+            new_point = [x, y]
+
+            # check if new point aligned with 2 previous point if nb point >=2
+            # and if it has not reached the maximum concept number per reading:
+            if len(trajectory) >= 2 and len(idx_event_concepts)<MAX_WORDS_PER_EVENT:
+                aligned = approximately_colinear(
+                    trajectory[-2],
+                    trajectory[-1],
+                    new_point,
+                    threshold=COLINEARITY_THRESHOLD,
+                )
+                if aligned:
+                    # new point aligned with last 2, so replace last point with new point:
+                    trajectory[-1] = new_point
+                    # NOTE: This is a way to clean the trajectory, in the sense it removes intermediary points on the same line,
+
+                else:
+
+                    # means a turn happened, so will read aloud closer previous point (beware, a lil delay as look at previous point!)
+                    # get idx and distance nearest concept of this point
+                    idx, dist, neue = nearest_concept(embeddings2D, trajectory[-1], idx_event_concepts)
+                    
+                    if neue: #say concept only if new concept
+                        # get word attached to that idx
+                        new_closer_concept = list(custom_embeddings.keys())[idx]
+                        print(
+                            "--looking at trajectory point {}. Here is {}".format(
+                                trajectory[-1], new_closer_concept
+                            )
                         )
-                    )
-                    # say it aloud
-                    client.emit(
-                        Message("speak", data={"utterance": new_closer_concept})
-                    )
+                        # say it aloud
+                        client.emit(
+                            Message("speak", data={"utterance": new_closer_concept})
+                        )
 
-                    # --update event data
-                    # save data of close concepts and distance
-                    event_data = update_event_data(
-                        new_closer_concept, dist, len(trajectory) - 1, event_data
-                    )
-                    idx_event_concepts.append(idx)
+                        # --update event data
+                        # save data of close concepts and distance
+                        event_data = update_event_data(
+                            new_closer_concept, dist, len(trajectory) - 1, event_data
+                        )
+                        idx_event_concepts.append(idx)
 
-                    # add new point to trajectory (at least temporarily)
-                    trajectory.append(new_point)
-                else:#no new concept, end reading
-                    end_reading=True
+                        # add new point to trajectory (at least temporarily)
+                        trajectory.append(new_point)
+                    else:#no new concept, end reading
+                        end_reading=True
 
-        else:  # second point in traj
-            trajectory.append(new_point)
-    
-    return trajectory, end_reading
+            else:  # second point in traj
+                trajectory.append(new_point)
+
 
 # =============================================================================
 # Reading event
@@ -397,7 +415,6 @@ def reading_event(trajectory, custom_embeddings, embeddings2D, event_data):
     Output:
         trinity: 3 closer self concepts selected
         custom_embeddings: redefined embedding dictionary
-
     """
 
     num_points = len(trajectory)
@@ -485,27 +502,25 @@ while True:
             # listen to Arduino trajectory in real time, save coordinates and draw graph
             # NOTE: currently stop listening after a certain number of frames. Could also be related to an ending signal (if arduino sends it...)
 
-            #---number frame ritual including warm up
-            # #max num frames of the nb words in self graph, else will run out of concepts...
-            num_frames = min(num_concepts-1, random.randint(MIN_FRAMES, MAX_FRAMES))
-            total_frames=num_frames+WARM_UP
-            
-            #---spatial ritual
-            print("Performing spatial ritual for {} warm up and {} legit frames".format(WARM_UP, num_frames))
-            count_frame=0
-            while (count_frame<total_frames) and (not end_reading):
-                if count_frame>=WARM_UP:
-                    trajectory, end_reading= spatial_ritual(count_frame, trajectory, end_reading)
-                count_frame+=1
-                time.sleep(INTERVAL_LISTEN/1000)#INTERVAL_LISTEN is in ms
-
-            #Sending ending dance signals
-            ending_dance()
-
+            plt.clf()#clear graph
+            plt.figure(figsize=(10, 5))
+            # compute for how many frames fo the ritual
+            num_frames = random.randint(MIN_FRAMES, MAX_FRAMES)
+            #max num frames of the nb words in self graph, else will run out of concepts...
+            num_frames=min(num_frames, num_concepts-1)
+            print("Performing spatial ritual for {} frames".format(num_frames))
+            ani = FuncAnimation(
+                plt.gcf(),
+                spatial_ritual,
+                frames=num_frames+WARM_UP,
+                interval=INTERVAL_LISTEN,
+                repeat=False
+            )
+            # plt.show(block=True)
             trajectory = trajectory[
                 :-1
             ]  # because the trajectory had one more point than when wee looked for concepts...
-            print("Final trajectory of length {}".format(len(trajectory)))
+            print("Trajectory of length {}".format(len(trajectory)))
 
             print(
                 "============================================================================="
@@ -555,3 +570,56 @@ while True:
         sys.exit()
 
 
+
+
+
+
+
+
+
+
+
+
+# -------------------------------------------------
+# ---------OLD CODE TEMPORARY KEEP
+
+# laod JSON structure
+# with open('sensordata.json') as jf:
+#     data_archive = json.load(jf)
+
+# basically runs this script in a loop ? Need?
+# client.run_forever()
+
+# #-3---find closer words to each of these points
+# print("***Interpreting Trajectory; extracting closer concepts***")
+# close_concepts, distances, trajectory_points=[], [], []
+# for i, point in enumerate(extracted_trajectory):
+#     if (not (i == 0)) and (not (i == max_num_points-1)):
+#         idx, dist=nearest_concept(embeddings2D, point)
+#         key=list(words_embeddings.keys())[idx] #get corresponding concept
+#         print(i, point, idx, key)
+#         if key not in close_concepts:
+#             close_concepts.append(key)
+#             distances.append(dist)
+#             trajectory_points.append(point)#point from traj is closer to
+#         else:#NOTE: Currently too often same concept closer to all>>> change this! Rather ok if same?
+#             j=close_concepts.index(key)
+#             if dist<distances[j]:#update distance #although risk one closer to several
+#                 distances[j]=dist
+#                 trajectory_points[j]=point
+# assert len(distances)==len(close_concepts)==len(trajectory_points)
+
+
+#     # =============================================================================
+# #--step 1-- Extract Sub Trajectory ()
+# # =============================================================================
+# max_num_points=7 #TBD
+# extract_sub_trajectory =False
+# if extract_sub_trajectory and len(trajectory)>max_num_points:
+#     extracted_trajectory=trajectory
+#     num_points=max_num_points
+#     start=random.randint(0,num_points-max_num_points)
+#     extracted_trajectory=trajectory[start:start+max_num_points]
+#     print("Extracted a trajectory of length {}".format(max_num_points))
+# else:
+#     extracted_trajectory=trajectory
