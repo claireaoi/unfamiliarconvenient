@@ -10,13 +10,90 @@ import seaborn as sns
 
 
 # =============================================================================
+########### INIT CONSTANT
+# =============================================================================
+
+# --init constants
+FILENAMES = [
+    "A",
+    "Ad1",
+    "Ad2",
+    "Ad3",
+    "V",
+    "Vt",
+    "V2",
+    "V+",
+    "P",
+    "Pf",
+    "P0",
+    "PR0",
+    "PR0a",
+    "PR1a",
+    "PR1",
+    "N",
+    "N2",
+    "Nf",
+    "Nfa",
+    "Na",
+    "Aa",
+    "Va",
+    "Nfa",
+    "ism",
+    "Duo",
+    "Nf",
+    "Ma",
+    "S",
+    "Sc",
+    "ESS",
+    "ASA",
+    "ABL",
+    "QU",
+    "Tion",
+    "Duoa",
+]
+
+
+# =============================================================================
 ########### INIT PROCEDURES
+# =============================================================================
+
+def initialize(graph_path, words_path, embeddings_path, embeddings2D_path):
+    """ 
+    Load files, embeddings, etc.
+    """
+    #load self self_graph
+    with open(graph_path) as json_file:
+        self_graph = json.load(json_file)
+
+    #load dictionary
+    wordsDic={}
+    for filename in FILENAMES:
+        wordsDic[filename] = [line.rstrip('\n') for line in open(words_path+filename+'.txt')]
+    
+    #load templates
+    with open(words_path+'haiku.txt', "r") as f:
+        templates  = f.read().split(">>>") #LIST for each Haiku
+
+    #load world embeddings
+    with open(embeddings_path) as json_file:
+        self_embeddings = json.load(json_file)
+
+    ne=len(list(self_embeddings.keys()))
+    embeddings2D= np.load(embeddings2D_path)
+    assert list(embeddings2D.shape)==[ne,2]
+    print("Retrieved {} embeddings ".format(ne))
+    idx=list(self_embeddings.keys()).index("acid")
+    return self_graph, wordsDic, templates, self_embeddings, embeddings2D
+
+
+# =============================================================================
+########### VECTOR PROCEDURES
 # =============================================================================
 
 def approximately_colinear(p1,p2,p3, threshold=0.05):
     """
         Determine if 3 points approximately colinear. Here, look if angle between 2 vectors small enough
-        #TODO: More efficient way? 
+        #TODO: More efficient way.
         Inputs: 
             p1,p2,p3: 2D points
         Output: boolean
@@ -54,16 +131,14 @@ def nearest_concept(points, ref, excluded_id):
     #-2---change all value dist in the excluded ids to very high value to be sure they are not picked by min later
     HORIZON=1000000000
     dist=np.array(dist)
+    excluded_ids=excluded_ids.astype(int)
     dist[excluded_ids]=HORIZON
 
     #-3-----take min
     idx = np.argmin(dist)
 
     #4---check if id is new or not
-    if idx in excluded_id:
-        neue=False
-    else:
-        neue=True
+    neue = not(idx in excluded_id)
     return idx, dist[idx], neue
 
 # TEST :
@@ -73,55 +148,30 @@ def nearest_concept(points, ref, excluded_id):
 # idx, d=nearest_concept(points, ref, excluded_id)
 # print(idx, d)
 
-def initialize(filenames, graph_path, words_path, embeddings_path, embeddings2D_path):
-    """ 
-    """
-
-
-    #load self self_graph
-    with open(graph_path) as json_file:
-        self_graph = json.load(json_file)
-
-    #load dictionary
-    wordsDic={}
-    for filename in filenames:
-        wordsDic[filename] = [line.rstrip('\n') for line in open(words_path+filename+'.txt')]
-    
-    #load templates
-    with open(words_path+'haiku.txt', "r") as f:
-        templates  = f.read().split(">>>") #LIST for each Haiku
-
-    #load world embeddings
-    with open(embeddings_path) as json_file:
-        self_embeddings = json.load(json_file)
-
-    ne=len(list(self_embeddings.keys()))
-    embeddings2D= np.load(embeddings2D_path)
-    assert list(embeddings2D.shape)==[ne,2]
-    print("Retrieved {} embeddings ".format(ne))
-    idx=list(self_embeddings.keys()).index("acid")
-    return self_graph, wordsDic, templates, self_embeddings, embeddings2D
-
 
 # =============================================================================
 ########### HAIKU PROCEDURES
 # =============================================================================
 
 def pick_template(templates):
-    print("Template 5: ", templates[4])
-    print("Template 6: ", templates[5])
+    """
+    Pick a template for the Haiku
+    NOTE: has different choice for different lines too
+    """
     template_=random.choice(templates)
     template=template_.split("\n\n")
-    print(template)
     final_template=[]
     for el in template:
         lines=el.split("\n")
         line=random.choice(lines)
         final_template.append(line)
-
     return final_template
 
 def read(line, seeds=[], dico=None):
+    """
+    Reading a line;
+    Decoding the template line picked into words.
+    """
     sentence=""
     things=line.split(" ")
     for thg in things:
@@ -137,9 +187,13 @@ def read(line, seeds=[], dico=None):
     return sentence, seeds
 
 def readUnit(unit, seeds=[], dico=None):
+    """
+    Reading a unit;
+    this may be a word or a "code" denoting a word type
+    """
     #-----may use seeds----
     if unit in ["S", "N","N2", "Ns", "N2s", "N2p", "Np"]:
-        #NOTE: here dont caree about plural !
+        #NOTE: here dont care about plural !
         if len(seeds)>0:
             bla=seeds[0]
             seeds.pop(0)
@@ -171,7 +225,6 @@ def readUnit(unit, seeds=[], dico=None):
         bla, seeds=read("X/Wg", seeds=seeds, dico=dico)
     elif unit=="PRO":
         bla, seeds=read("S/V//S/Vt/X//X/V//N/Vt/X//S/V/P0/X", seeds=seeds, dico=dico)
-
     #---not affecting seeds
     elif unit=="A":#removed A0//A0/A0//A0/A0//A0/A0/A0//
         bla, w=read("A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//A0//Ad2/A0//A0//Ad2/A0//Ad2/A0//still/A0//A0/yet/A0//yet/A0//soon/A0//somehow/A0//already/A0", dico=dico)
@@ -187,7 +240,6 @@ def readUnit(unit, seeds=[], dico=None):
         bla=verb[0]+"ed" #okay as after use grammar corrector
         if len(verb)>0:
             bla+=" "+' '.join(verb[1:])
-        #NOTE: Previous library Python issue ? 3.6 or 2.7... find replacement...
         # bla=lexeme(verb[0])[4] #past
     elif unit=="Vag" or unit=="Vg" or unit=="Vtg" or  unit=="V2g":
         verb=random.choice(dico[unit.replace("g", "")]).split(" ")
@@ -195,12 +247,11 @@ def readUnit(unit, seeds=[], dico=None):
         if len(verb)>0:
             bla+=" "+' '.join(verb[1:])
         ## bla=lexeme(verb[0])[2] #present participe
-        # #conjugate(verb[0], tense = "present",  person = 3,  number = "singular",  mood = "indicative", aspect = "progressive",negated = False)
-    #----remaining stuff
+    #----for the other categories
     elif unit in dico.keys():
         bla, w=read(random.choice(dico[unit]), dico=dico)
 
-    else:#mean just a word
+    else: #---in case just a word
         bla=unit
 
     return bla, seeds
@@ -238,9 +289,10 @@ def generate_haiku(seeds, templates, dico, grammarParser):
         templates: templates for Haiku
         dico: dictionnary of words, by genre (noun, adjective etc)
         grammarParser: to parse grammar mistakes
+
+    Output: haiku (string)
     """
     assert len(seeds)==3
-
 
     #-1---generate haiku until use at least 2 seeds (so remain less than 1, because 3 seeds originally):
     remaining_seeds=seeds
@@ -267,7 +319,8 @@ def redefine_embeddings(embeddings, trinity):
     Redefine embeddings of the 3 concepts coming from the reading.
     The embeddings of these 3 words get pulled towards the gravity center.
     Inputs:
-        embeddings: dictionary, with the words and vectors. #NOTE: beware, here vector saved as list, may be dim [1,x], [2,x], [3,x]
+        embeddings: dictionary, with the words and vectors. 
+        #NOTE: beware, here vector saved as list, may be dim [1,x], [2,x], [3,x]
         #TODO: how treat the rows? for now ignore other rows when they appear
         trinity: 3 concepts (i.e. string)
     """
@@ -287,31 +340,6 @@ def redefine_embeddings(embeddings, trinity):
 #--------DRAWING PROCEDURES------------------
 #---------------------------------------
 
-def update_event_data(new_closer_concept, dist, point_idx, event_data):
-    """
-    Update event data.
-    Inputs:
-        new_closer_concept: string
-        dist: float, distance between concept & domesticoCosmic point (of the trajectory)
-        point_idx: int, index of the domesticoCosmic point
-        event_data: dictionnary whose keys are string (concepts) and values are list [float, int] (which are distances, reps. idx of corresponding trajectory point in our case)
-    Output:
-        event_data: dictionnary whose keys are string (concepts) and values are list [float, int] (which are distances, reps. idx of corresponding trajectory point in our case)
-    """
-    #TODO: Now should each time get different concepts with the new code, so may straightly register it !
-
-    if new_closer_concept not in list(event_data.keys()):
-        #new concept, then add it with as values idx point trajectory and word
-        event_data[new_closer_concept]=[dist, point_idx]
-    elif dist<event_data[new_closer_concept][0]:
-        #if distance smaller, update point index
-        event_data[new_closer_concept]=[dist, point_idx]
-
-    return event_data
-
-#--------------------------------------------
-#--------DRAWING PROCEDURES------------------
-#---------------------------------------
 def visualize_event_chart(trajectory, trinity_trajectory, haiku, output_path="./000.png"):
     """
     Final drawing
@@ -359,47 +387,3 @@ def visualize_event_chart(trajectory, trinity_trajectory, haiku, output_path="./
     #show
     plt.savefig(output_path)
     #plt.close()
-
-
-# ######### TESTS PROCEDURES ABOVE ###########
-
-
-
-# FILENAMES=["A", "Ad1", "Ad2", "Ad3", "V", "Vt", "V2", "V+", "P", "Pf", "P0", "PR0", "PR0a", "PR1a", "PR1", "N", "N2", "Nf","Nfa", "Na", "Aa", "Va", "Nfa", "ism", "Duo", "Nf", "Ma", "S", "Sc", "ESS", "ASA", "ABL", "QU",  "Tion", "Duoa"]
-# GRAPH_PATH = "graph.json"# This path is temporary, it should refer to the fallbackassociative skill folder: /home/unfamiliarconvenient/.mycroft/fallback-associative/graph.json"
-# WORDS_PATH="./data/" #Modify when...
-# EMBEDDINGS_PATH="custom_embeddings.json" #where save words embeddings
-
-# ##INIT
-# self_graph, wordsDic, templates, custom_embeddings=initialize(FILENAMES, GRAPH_PATH, WORDS_PATH, EMBEDDINGS_PATH)
-
-# #TEST SELF GRAPH EMBEDDINGS
-# # concepts, scaled_embeddings2D=self_graph_embeddings(self_graph, custom_embeddings, 10)
-# # print(scaled_embeddings2D.shape)
-
-# #TEST HAIKU
-# #haiku=generate_haiku(["submarine", "lightbulb", "fetish"], templates, wordsDic)
-
-
-
-
-
-# def load_gpt2(path_finetuned_ML_model=""):
-#     """
-#     Load gpt2 & tokenizer
-#     """
-#     #--load model and tokenizer
-#     if path_finetuned_ML_model=="":
-#         print("loading gpt2 model")
-#         model=GPT2LMHeadModel.from_pretrained("gpt2")
-#     else:
-#         print("loading custom model")
-#         model = GPT2LMHeadModel.from_pretrained(path_finetuned_ML_model)
-#     # Word Token Embeddings :
-#     #model_word_embeddings = model.transformer.wte.weight
-#     # Word Position Embeddings :
-#     #model_position_embeddings = model.transformer.wpe.weight
-    
-#     #load tokenizer
-#     tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
-#     return model, tokenizer
