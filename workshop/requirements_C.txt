@@ -100,7 +100,7 @@ PyGithub==1.51
 Pygments==2.6.1
 pygraphviz==1.5
 pyjokes==0.5.0
-PyJWT==1.7.1
+PyJWT==2.4.0
 PyMeeus==0.3.7
 pyOpenSSL==19.1.0
 pyowm==2.6.1
