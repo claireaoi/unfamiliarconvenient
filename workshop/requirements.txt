@@ -79,7 +79,7 @@ Pillow==6.2.1
 pluggy==0.13.1
 pocketsphinx==0.1.0
 precise-runner==0.2.1
-protobuf==3.11.1
+protobuf==3.18.3
 psutil==5.2.1
 py==1.8.0
 pyalsaaudio==0.8.2
