@@ -15,7 +15,7 @@ colorama==0.4.3
 cov-core==1.15.0
 coverage==4.5.4
 coveralls==1.8.2
-cryptography==2.8
+cryptography==3.2
 cycler==0.10.0
 dataclasses==0.7
 ddg3==0.6.6
