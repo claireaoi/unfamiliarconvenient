@@ -85,7 +85,7 @@ pocketsphinx==0.1.0
 precise-runner==0.2.1
 protobuf==3.12.2
 psutil==5.6.6
-py==1.8.1
+py==1.10.0
 pyalsaaudio==0.8.2
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
